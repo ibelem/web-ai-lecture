@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>轨道 A · WebGPU + Transformers.js 本地大语言模型</title>
+<style>
+  :root {
+    --intel-blue: #00C7FD;
+    --intel-deep: #0068B5;
+    --bg: #0a0e14;
+    --panel: #121821;
+    --panel-2: #1a222e;
+    --text: #e6edf3;
+    --muted: #8b98a9;
+    --ok: #3fb950;
+    --warn: #d29922;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif;
+    background: radial-gradient(1200px 600px at 80% -10%, #0d2436 0%, var(--bg) 55%);
+    color: var(--text);
+    min-height: 100vh;
+    line-height: 1.6;
+  }
+  header {
+    padding: 28px 32px 18px;
+    border-bottom: 1px solid #1f2a37;
+  }
+  .badge {
+    display: inline-block;
+    font-size: 12px;
+    letter-spacing: 2px;
+    color: var(--intel-blue);
+    border: 1px solid var(--intel-blue);
+    border-radius: 20px;
+    padding: 2px 12px;
+    margin-bottom: 12px;
+  }
+  h1 { margin: 0 0 6px; font-size: 24px; }
+  h1 .accent { color: var(--intel-blue); }
+  .sub { color: var(--muted); font-size: 14px; }
+  main { max-width: 980px; margin: 0 auto; padding: 24px 32px 60px; }
+  .row { display: flex; gap: 16px; flex-wrap: wrap; align-items: center; margin-bottom: 18px; }
+  label { font-size: 13px; color: var(--muted); }
+  select, button, textarea, input {
+    font-family: inherit;
+    border-radius: 8px;
+    border: 1px solid #2a3645;
+    background: var(--panel-2);
+    color: var(--text);
+    padding: 10px 14px;
+    font-size: 14px;
+  }
+  button {
+    background: linear-gradient(135deg, var(--intel-blue), var(--intel-deep));
+    color: #00121d;
+    font-weight: 700;
+    border: none;
+    cursor: pointer;
+    transition: transform .1s, opacity .2s;
+  }
+  button:hover { transform: translateY(-1px); }
+  button:disabled { opacity: .45; cursor: not-allowed; transform: none; }
+  textarea { width: 100%; min-height: 70px; resize: vertical; }
+  .panel {
+    background: var(--panel);
+    border: 1px solid #1f2a37;
+    border-radius: 14px;
+    padding: 20px;
+    margin-bottom: 18px;
+  }
+  .panel h2 { margin: 0 0 12px; font-size: 15px; color: var(--intel-blue); }
+  #status {
+    font-size: 13px; color: var(--muted); min-height: 20px;
+    font-variant-numeric: tabular-nums;
+  }
+  .bar {
+    height: 6px; background: #1f2a37; border-radius: 4px; overflow: hidden; margin-top: 8px;
+  }
+  .bar > i { display: block; height: 100%; width: 0%; background: var(--intel-blue); transition: width .2s; }
+  #output {
+    white-space: pre-wrap;
+    background: #060a10;
+    border: 1px solid #1f2a37;
+    border-radius: 10px;
+    padding: 16px;
+    min-height: 120px;
+    font-size: 15px;
+  }
+  .stats { display: flex; gap: 28px; margin-top: 14px; flex-wrap: wrap; }
+  .stat { }
+  .stat .k { font-size: 12px; color: var(--muted); }
+  .stat .v { font-size: 22px; font-weight: 700; color: var(--intel-blue); font-variant-numeric: tabular-nums; }
+  code { background: #060a10; padding: 2px 6px; border-radius: 5px; color: var(--intel-blue); font-size: 13px; }
+  .hint { font-size: 12px; color: var(--muted); margin-top: 6px; }
+  footer { text-align: center; color: var(--muted); font-size: 12px; padding: 20px; }
+</style>
+</head>
+<body>
+<header>
+  <div class="badge">TRACK A · WEBGPU · LLM</div>
+  <h1>在 <span class="accent">AI PC</span> 上用 <span class="accent">WebGPU</span> 跑本地大语言模型</h1>
+  <div class="sub">Transformers.js + WebGPU backend · 数据不出本地 · 零云端成本 · 可离线</div>
+</header>
+
+<main>
+  <div class="panel">
+    <h2>① 选择模型与硬件后端</h2>
+    <div class="row">
+      <div>
+        <label>模型</label><br>
+        <select id="model">
+          <option value="HuggingFaceTB/SmolLM2-360M-Instruct">SmolLM2-360M-Instruct（最轻，推荐先试）</option>
+          <option value="onnx-community/Qwen2.5-0.5B-Instruct">Qwen2.5-0.5B-Instruct（中文更好）</option>
+        </select>
+      </div>
+      <div>
+        <label>硬件后端 device</label><br>
+        <select id="device">
+          <option value="webgpu">webgpu（GPU 加速）</option>
+          <option value="wasm">wasm（CPU，用于对比）</option>
+        </select>
+      </div>
+      <div style="align-self:flex-end">
+        <button id="load">加载模型</button>
+      </div>
+    </div>
+    <div id="status">就绪。点击「加载模型」开始（首次需联网下载，之后浏览器缓存可离线）。</div>
+    <div class="bar"><i id="prog"></i></div>
+    <div class="hint">核心代码： <code>pipeline("text-generation", model, { device: "webgpu" })</code></div>
+  </div>
+
+  <div class="panel">
+    <h2>② 输入问题，本地生成</h2>
+    <textarea id="prompt" placeholder="例如：用一句话解释什么是 WebGPU。">用一句话解释什么是 AI PC。</textarea>
+    <div class="row" style="margin-top:12px">
+      <button id="gen" disabled>生成</button>
+      <label>最大生成 tokens</label>
+      <input id="maxtok" type="number" value="128" min="16" max="512" style="width:90px">
+    </div>
+    <div id="output">（生成结果显示在这里）</div>
+    <div class="stats">
+      <div class="stat"><div class="k">首 token 延迟</div><div class="v"><span id="ttft">–</span> ms</div></div>
+      <div class="stat"><div class="k">生成速度</div><div class="v"><span id="tps">–</span> tok/s</div></div>
+      <div class="stat"><div class="k">当前后端</div><div class="v"><span id="curdev">–</span></div></div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>③ 课堂观察</h2>
+    <ul style="margin:0;color:var(--muted);font-size:14px">
+      <li>切到 <code>webgpu</code> 重新加载，对比 <code>wasm</code> 的 tok/s —— 这就是 AI PC 的 GPU 算力。</li>
+      <li>断开网络再点「生成」，依然能跑 —— 模型已缓存进浏览器，全程本地推理。</li>
+      <li>打开任务管理器看 GPU 占用：生成时 GPU 拉满，说明算力真的落到了本地硬件。</li>
+    </ul>
+  </div>
+</main>
+
+<footer>Web AI Lecture · Track A · 仅用 CDN，无需本地服务器，双击即可运行</footer>
+
+<script type="module">
+import { pipeline, TextStreamer } from "https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.7.5";
+
+const $ = (id) => document.getElementById(id);
+let generator = null;
+
+function setProg(p) { $("prog").style.width = (p * 100).toFixed(1) + "%"; }
+
+$("load").addEventListener("click", async () => {
+  const model = $("model").value;
+  const device = $("device").value;
+  $("load").disabled = true;
+  $("gen").disabled = true;
+  $("curdev").textContent = device;
+  setProg(0);
+
+  try {
+    $("status").textContent = `正在加载 ${model}（${device}）…`;
+    generator = await pipeline("text-generation", model, {
+      device,
+      // 进度回调：把下载进度画到进度条
+      progress_callback: (x) => {
+        if (x.status === "progress" && x.total) {
+          setProg(x.loaded / x.total);
+          $("status").textContent = `下载 ${x.file || ""} … ${(x.loaded/1e6).toFixed(1)} / ${(x.total/1e6).toFixed(1)} MB`;
+        } else if (x.status === "ready") {
+          $("status").textContent = "模型就绪，可以开始生成。";
+        }
+      },
+    });
+    setProg(1);
+    $("status").textContent = `✅ 模型已加载（${device}）。输入问题后点「生成」。`;
+    $("gen").disabled = false;
+  } catch (e) {
+    $("status").textContent = "❌ 加载失败：" + e.message + "（WebGPU 不可用时可改选 wasm）";
+    $("load").disabled = false;
+  }
+});
+
+$("gen").addEventListener("click", async () => {
+  if (!generator) return;
+  $("gen").disabled = true;
+  $("output").textContent = "";
+  const promptText = $("prompt").value.trim();
+  const maxTok = parseInt($("maxtok").value) || 128;
+
+  const messages = [{ role: "user", content: promptText }];
+
+  let started = false;
+  let t0 = performance.now();
+  let ttft = 0;
+  let nTokens = 0;
+
+  // 流式输出：每来一个 token 就追加到屏幕，并记录首 token 延迟
+  const streamer = new TextStreamer(generator.tokenizer, {
+    skip_prompt: true,
+    callback_function: (text) => {
+      if (!started) { ttft = performance.now() - t0; $("ttft").textContent = ttft.toFixed(0); started = true; }
+      nTokens++;
+      $("output").textContent += text;
+    },
+  });
+
+  try {
+    t0 = performance.now();
+    await generator(messages, { max_new_tokens: maxTok, do_sample: false, streamer });
+    const total = performance.now() - t0;
+    const genTime = (total - ttft) / 1000;
+    const tps = genTime > 0 ? (nTokens / genTime) : 0;
+    $("tps").textContent = tps.toFixed(1);
+  } catch (e) {
+    $("output").textContent += "\n❌ 生成失败：" + e.message;
+  } finally {
+    $("gen").disabled = false;
+  }
+});
+</script>
+</body>
+</html>

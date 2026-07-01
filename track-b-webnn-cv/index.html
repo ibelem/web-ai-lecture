@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>轨道 B · WebNN + Transformers.js 图像分类（NPU 加速）</title>
+<style>
+  :root {
+    --intel-blue: #00C7FD;
+    --intel-deep: #0068B5;
+    --bg: #0a0e14;
+    --panel: #121821;
+    --panel-2: #1a222e;
+    --text: #e6edf3;
+    --muted: #8b98a9;
+    --ok: #3fb950;
+    --warn: #d29922;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif;
+    background: radial-gradient(1200px 600px at 80% -10%, #0d2436 0%, var(--bg) 55%);
+    color: var(--text);
+    min-height: 100vh;
+    line-height: 1.6;
+  }
+  header {
+    padding: 28px 32px 18px;
+    border-bottom: 1px solid #1f2a37;
+  }
+  .badge {
+    display: inline-block;
+    font-size: 12px;
+    letter-spacing: 2px;
+    color: var(--intel-blue);
+    border: 1px solid var(--intel-blue);
+    border-radius: 20px;
+    padding: 2px 12px;
+    margin-bottom: 12px;
+  }
+  h1 { margin: 0 0 6px; font-size: 24px; }
+  h1 .accent { color: var(--intel-blue); }
+  .sub { color: var(--muted); font-size: 14px; }
+  main { max-width: 980px; margin: 0 auto; padding: 24px 32px 60px; }
+  .row { display: flex; gap: 16px; flex-wrap: wrap; align-items: center; margin-bottom: 18px; }
+  label { font-size: 13px; color: var(--muted); }
+  select, button, input {
+    font-family: inherit;
+    border-radius: 8px;
+    border: 1px solid #2a3645;
+    background: var(--panel-2);
+    color: var(--text);
+    padding: 10px 14px;
+    font-size: 14px;
+  }
+  button {
+    background: linear-gradient(135deg, var(--intel-blue), var(--intel-deep));
+    color: #00121d;
+    font-weight: 700;
+    border: none;
+    cursor: pointer;
+    transition: transform .1s, opacity .2s;
+  }
+  button:hover { transform: translateY(-1px); }
+  button:disabled { opacity: .45; cursor: not-allowed; transform: none; }
+  .panel {
+    background: var(--panel);
+    border: 1px solid #1f2a37;
+    border-radius: 14px;
+    padding: 20px;
+    margin-bottom: 18px;
+  }
+  .panel h2 { margin: 0 0 12px; font-size: 15px; color: var(--intel-blue); }
+  #status {
+    font-size: 13px; color: var(--muted); min-height: 20px;
+    font-variant-numeric: tabular-nums;
+  }
+  .bar { height: 6px; background: #1f2a37; border-radius: 4px; overflow: hidden; margin-top: 8px; }
+  .bar > i { display: block; height: 100%; width: 0%; background: var(--intel-blue); transition: width .2s; }
+  .preview-wrap { display: flex; gap: 20px; flex-wrap: wrap; }
+  #preview {
+    max-width: 360px; max-height: 300px; border-radius: 10px; border: 1px solid #1f2a37;
+    background: #060a10; object-fit: contain;
+  }
+  #results { flex: 1; min-width: 280px; }
+  .result-item {
+    display: flex; align-items: center; gap: 10px; margin-bottom: 10px;
+  }
+  .result-item .name { width: 150px; font-size: 14px; }
+  .result-item .track { flex: 1; height: 14px; background: #1f2a37; border-radius: 7px; overflow: hidden; }
+  .result-item .track > i { display: block; height: 100%; background: linear-gradient(90deg, var(--intel-deep), var(--intel-blue)); }
+  .result-item .pct { width: 56px; text-align: right; font-size: 13px; color: var(--intel-blue); font-variant-numeric: tabular-nums; }
+  .stats { display: flex; gap: 28px; margin-top: 14px; flex-wrap: wrap; }
+  .stat .k { font-size: 12px; color: var(--muted); }
+  .stat .v { font-size: 22px; font-weight: 700; color: var(--intel-blue); font-variant-numeric: tabular-nums; }
+  code { background: #060a10; padding: 2px 6px; border-radius: 5px; color: var(--intel-blue); font-size: 13px; }
+  .hint { font-size: 12px; color: var(--muted); margin-top: 6px; }
+  footer { text-align: center; color: var(--muted); font-size: 12px; padding: 20px; }
+</style>
+</head>
+<body>
+<header>
+  <div class="badge">TRACK B · WEBNN · COMPUTER VISION</div>
+  <h1>在 <span class="accent">AI PC</span> 上用 <span class="accent">WebNN</span> 跑图像分类（直达 NPU）</h1>
+  <div class="sub">Transformers.js + WebNN backend · 低功耗 · 风扇不转 · 数据不出本地</div>
+</header>
+
+<main>
+  <div class="panel">
+    <h2>① 选择模型与硬件后端</h2>
+    <div class="row">
+      <div>
+        <label>模型</label><br>
+        <select id="model">
+          <option value="onnx-community/mobilenetv4_conv_small.e2400_r224_in1k">MobileNetV4-small（轻量分类，推荐）</option>
+          <option value="Xenova/vit-base-patch16-224">ViT-base-224（更准，稍重）</option>
+        </select>
+      </div>
+      <div>
+        <label>硬件后端 device</label><br>
+        <select id="device">
+          <option value="webnn">webnn（NPU/GPU 加速）</option>
+          <option value="wasm">wasm（CPU，用于对比）</option>
+        </select>
+      </div>
+      <div style="align-self:flex-end">
+        <button id="load">加载模型</button>
+      </div>
+    </div>
+    <div id="status">就绪。点击「加载模型」开始（首次需联网下载，之后浏览器缓存可离线）。</div>
+    <div class="bar"><i id="prog"></i></div>
+    <div class="hint">核心代码： <code>pipeline("image-classification", model, { device: "webnn" })</code></div>
+    <div class="hint">⚠ WebNN 需浏览器支持：Edge/Chrome 在 <code>chrome://flags</code> 开启 <code>#web-machine-learning-neural-network</code>，不可用时自动可改选 wasm。</div>
+  </div>
+
+  <div class="panel">
+    <h2>② 上传图片，本地分类</h2>
+    <div class="row">
+      <input id="file" type="file" accept="image/*">
+      <button id="run" disabled>分类</button>
+      <button id="sample" disabled>用示例图片</button>
+    </div>
+    <div class="preview-wrap">
+      <img id="preview" alt="预览" />
+      <div id="results"><span style="color:var(--muted)">（分类结果显示在这里）</span></div>
+    </div>
+    <div class="stats">
+      <div class="stat"><div class="k">推理耗时</div><div class="v"><span id="latency">–</span> ms</div></div>
+      <div class="stat"><div class="k">当前后端</div><div class="v"><span id="curdev">–</span></div></div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>③ 课堂观察</h2>
+    <ul style="margin:0;color:var(--muted);font-size:14px">
+      <li>切到 <code>webnn</code> 与 <code>wasm</code> 对比推理耗时 —— NPU 的能效优势。</li>
+      <li>连续分类多张图，摸一下机器：NPU 跑 CNN 风扇不转、几乎不发热。</li>
+      <li>断网再分类，依然可用 —— 模型已缓存，全程本地，图片不上传任何服务器。</li>
+    </ul>
+  </div>
+</main>
+
+<footer>Web AI Lecture · Track B · 仅用 CDN，无需本地服务器，双击即可运行</footer>
+
+<script type="module">
+import { pipeline, env } from "https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.7.5";
+
+const $ = (id) => document.getElementById(id);
+let classifier = null;
+let currentImageURL = null;
+
+function setProg(p) { $("prog").style.width = (p * 100).toFixed(1) + "%"; }
+
+$("load").addEventListener("click", async () => {
+  const model = $("model").value;
+  const device = $("device").value;
+  $("load").disabled = true;
+  $("run").disabled = true;
+  $("sample").disabled = true;
+  $("curdev").textContent = device;
+  setProg(0);
+
+  try {
+    $("status").textContent = `正在加载 ${model}（${device}）…`;
+    classifier = await pipeline("image-classification", model, {
+      device,
+      progress_callback: (x) => {
+        if (x.status === "progress" && x.total) {
+          setProg(x.loaded / x.total);
+          $("status").textContent = `下载 ${x.file || ""} … ${(x.loaded/1e6).toFixed(1)} / ${(x.total/1e6).toFixed(1)} MB`;
+        } else if (x.status === "ready") {
+          $("status").textContent = "模型就绪。";
+        }
+      },
+    });
+    setProg(1);
+    $("status").textContent = `✅ 模型已加载（${device}）。上传图片后点「分类」。`;
+    $("run").disabled = false;
+    $("sample").disabled = false;
+  } catch (e) {
+    $("status").textContent = "❌ 加载失败：" + e.message + "（WebNN 不可用时可改选 wasm）";
+    $("load").disabled = false;
+  }
+});
+
+$("file").addEventListener("change", (e) => {
+  const f = e.target.files[0];
+  if (!f) return;
+  if (currentImageURL) URL.revokeObjectURL(currentImageURL);
+  currentImageURL = URL.createObjectURL(f);
+  $("preview").src = currentImageURL;
+});
+
+$("sample").addEventListener("click", () => {
+  // 一张公开示例图（联网时可用）；离线时请改用本地上传
+  currentImageURL = "https://huggingface.co/datasets/Xenova/transformers.js-docs/resolve/main/tiger.jpg";
+  $("preview").src = currentImageURL;
+});
+
+function renderResults(out) {
+  const top = out.slice(0, 5);
+  $("results").innerHTML = top.map((r) => {
+    const pct = (r.score * 100).toFixed(1);
+    return `<div class="result-item">
+      <div class="name" title="${r.label}">${r.label}</div>
+      <div class="track"><i style="width:${pct}%"></i></div>
+      <div class="pct">${pct}%</div>
+    </div>`;
+  }).join("");
+}
+
+$("run").addEventListener("click", async () => {
+  if (!classifier || !currentImageURL) {
+    $("status").textContent = "请先加载模型并选择图片。";
+    return;
+  }
+  $("run").disabled = true;
+  $("results").innerHTML = '<span style="color:var(--muted)">推理中…</span>';
+  try {
+    const t0 = performance.now();
+    const out = await classifier(currentImageURL, { top_k: 5 });
+    const dt = performance.now() - t0;
+    $("latency").textContent = dt.toFixed(0);
+    renderResults(out);
+  } catch (e) {
+    $("results").innerHTML = '<span style="color:var(--warn)">❌ 分类失败：' + e.message + '</span>';
+  } finally {
+    $("run").disabled = false;
+  }
+});
+</script>
+</body>
+</html>

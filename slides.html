@@ -1,0 +1,1450 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>你的 AI PC 不只会跑软件 · Web AI 全栈实战</title>
+<style>
+  :root {
+    --intel-blue: #00C7FD;
+    --intel-deep: #0068B5;
+    --intel-energy: #00E1FF;
+    --bg: #060a10;
+    --bg2: #0a0e14;
+    --panel: #121821;
+    --panel-2: #1a222e;
+    --text: #e6edf3;
+    --muted: #8b98a9;
+    --line: #1f2a37;
+    --ok: #3fb950;
+    --warn: #d29922;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body {
+    font-family: -apple-system, "Segoe UI", "Microsoft YaHei", "PingFang SC", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    overflow: hidden;
+  }
+
+  /* ---------- Slide stage ---------- */
+  .stage { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; }
+  .slide {
+    position: absolute;
+    width: 100%; height: 100%;
+    padding: 56px 72px;
+    display: none;
+    flex-direction: column;
+    background:
+      radial-gradient(1100px 560px at 82% -12%, #0d2a40 0%, transparent 55%),
+      radial-gradient(900px 500px at -10% 110%, #07243a 0%, transparent 50%),
+      var(--bg);
+    animation: fade .35s ease;
+  }
+  .slide.active { display: flex; }
+  @keyframes fade { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+
+  .kicker {
+    font-size: 14px; letter-spacing: 3px; color: var(--intel-blue);
+    text-transform: uppercase; margin-bottom: 18px; font-weight: 600;
+  }
+  h1 { font-size: 52px; line-height: 1.15; margin-bottom: 18px; font-weight: 800; }
+  h2 { font-size: 38px; line-height: 1.2; margin-bottom: 24px; font-weight: 700; }
+  h3 { font-size: 24px; color: var(--intel-blue); margin-bottom: 14px; }
+  .accent { color: var(--intel-blue); }
+  .energy { color: var(--intel-energy); }
+  p, li { font-size: 21px; line-height: 1.65; color: #d6dee8; }
+  ul, ol { margin-left: 26px; }
+  li { margin-bottom: 12px; }
+  .muted { color: var(--muted); }
+  .big { font-size: 30px; }
+  .huge { font-size: 64px; font-weight: 800; }
+  code {
+    font-family: "Cascadia Code", "Fira Code", Consolas, monospace;
+    background: #02060c; color: var(--intel-energy);
+    padding: 2px 8px; border-radius: 6px; font-size: .92em;
+    border: 1px solid var(--line);
+  }
+  pre {
+    background: #02060c; border: 1px solid var(--line); border-radius: 12px;
+    padding: 22px 26px; overflow: auto; margin: 14px 0;
+    font-family: "Cascadia Code", "Fira Code", Consolas, monospace;
+    font-size: 18px; line-height: 1.6;
+  }
+  pre code { background: none; border: none; padding: 0; color: #cfe8f5; }
+  .tok-key { color: #ff7b72; }
+  .tok-fn { color: var(--intel-energy); }
+  .tok-str { color: #7ee787; }
+  .tok-com { color: #6b7886; font-style: italic; }
+  .tok-num { color: #d2a8ff; }
+
+  .cols { display: flex; gap: 32px; flex: 1; min-height: 0; }
+  .col { flex: 1; }
+  .card {
+    background: var(--panel); border: 1px solid var(--line); border-radius: 16px;
+    padding: 24px 26px; margin-bottom: 16px;
+  }
+  .card h3 { margin-bottom: 10px; }
+  .pill {
+    display: inline-block; padding: 4px 14px; border-radius: 20px;
+    border: 1px solid var(--intel-blue); color: var(--intel-blue);
+    font-size: 14px; margin: 4px 6px 4px 0;
+  }
+  table { border-collapse: collapse; width: 100%; margin-top: 10px; font-size: 19px; }
+  th, td { text-align: left; padding: 12px 16px; border-bottom: 1px solid var(--line); }
+  th { color: var(--intel-blue); font-size: 17px; letter-spacing: .5px; }
+  td.hl { color: var(--intel-energy); font-weight: 600; }
+
+  .center { align-items: center; justify-content: center; text-align: center; }
+  .center h1, .center h2 { max-width: 1100px; }
+
+  /* 讲稿源：仅作数据，绝不在幻灯片里显示（内容由 #notes 面板读取） */
+  .notes-src { display: none !important; }
+
+  /* three engines diagram */
+  .engines { display: flex; gap: 24px; margin-top: 20px; }
+  .engine {
+    flex: 1; text-align: center; padding: 26px 18px; border-radius: 16px;
+    background: var(--panel); border: 1px solid var(--line);
+  }
+  .engine .ic { font-size: 46px; margin-bottom: 8px; }
+  .engine.npu { border-color: var(--intel-blue); box-shadow: 0 0 40px -10px var(--intel-blue); }
+  .engine .lbl { font-size: 26px; font-weight: 700; }
+  .engine .role { font-size: 16px; color: var(--muted); margin-top: 6px; }
+
+  /* stack diagram */
+  .stack { display: flex; flex-direction: column; gap: 10px; max-width: 720px; margin: 8px auto 0; }
+  .layer {
+    padding: 16px 22px; border-radius: 12px; border: 1px solid var(--line);
+    background: var(--panel); font-size: 20px; display: flex; justify-content: space-between; align-items: center;
+  }
+  .layer .t { font-weight: 700; }
+  .layer .d { font-size: 15px; color: var(--muted); }
+  .layer.l1 { border-color: var(--intel-energy); }
+  .layer.l2 { border-color: var(--intel-blue); }
+  .arrow-down { text-align: center; color: var(--intel-blue); font-size: 20px; }
+
+  .quote {
+    border-left: 4px solid var(--intel-blue); padding: 12px 0 12px 24px;
+    font-size: 26px; line-height: 1.5; color: #fff; margin: 10px 0;
+  }
+
+  /* ---------- Chrome / HUD ---------- */
+  .hud {
+    position: fixed; bottom: 0; left: 0; right: 0; height: 44px;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 22px; font-size: 13px; color: var(--muted);
+    background: linear-gradient(0deg, rgba(0,0,0,.5), transparent);
+    pointer-events: none; z-index: 30;
+  }
+  .hud .brand { color: var(--intel-blue); font-weight: 700; letter-spacing: 1px; }
+  .progress { position: fixed; top: 0; left: 0; height: 3px; background: var(--intel-blue); z-index: 40; transition: width .3s; }
+
+  /* speaker notes */
+  .notes {
+    position: fixed; left: 0; right: 0; bottom: 0; max-height: 42vh;
+    background: #0c1219; border-top: 2px solid var(--intel-blue);
+    padding: 22px 34px 30px; overflow: auto; z-index: 50;
+    transform: translateY(105%); transition: transform .28s ease;
+    box-shadow: 0 -20px 40px rgba(0,0,0,.5);
+  }
+  .notes.show { transform: none; }
+  .notes-close {
+    position: absolute; top: 14px; right: 22px;
+    background: var(--panel-2); border: 1px solid var(--line); color: var(--text);
+    border-radius: 8px; padding: 6px 14px; font-size: 13px; cursor: pointer;
+    font-family: inherit;
+  }
+  .notes-close:hover { border-color: var(--intel-blue); color: var(--intel-blue); }
+  .notes h4 { color: var(--intel-blue); font-size: 14px; letter-spacing: 2px; margin-bottom: 10px; text-transform: uppercase; }
+  .notes .nbody { font-size: 17px; line-height: 1.7; color: #cdd6e0; white-space: pre-wrap; }
+  .notes .ntime { color: var(--warn); font-weight: 700; }
+
+  .help {
+    position: fixed; top: 14px; right: 18px; z-index: 40;
+    font-size: 12px; color: var(--muted); text-align: right; line-height: 1.7;
+  }
+  .help b { color: var(--intel-blue); }
+  kbd {
+    background: var(--panel-2); border: 1px solid var(--line); border-radius: 5px;
+    padding: 1px 7px; font-size: 11px; color: var(--text);
+  }
+</style>
+</head>
+<body>
+
+<div class="progress" id="progress"></div>
+<div class="help">
+  <div><kbd>←</kbd>/<kbd>→</kbd> 翻页 · <kbd>N</kbd> 讲稿开关 · <kbd>Esc</kbd> 关讲稿 · <kbd>F</kbd> 全屏</div>
+</div>
+
+<div class="stage" id="stage">
+
+<!-- ============ 1 · COVER ============ -->
+<section class="slide active center">
+  <div class="kicker">INTEL AI PC · WEB AI 全栈实战</div>
+  <h1>你的 <span class="accent">AI PC</span> 不只会跑软件<br>在浏览器里跑本地 AI 大模型与视觉应用</h1>
+  <p class="big muted">打开网页即推理 —— 用 <span class="accent">WebGPU + WebNN</span> 调用 CPU / GPU / NPU<br>零服务器成本 · 数据不出本地 · 可离线</p>
+  <aside class="notes-src" data-time="0:00 – 0:30">
+开场白：大家好。先问一个问题 —— 你觉得跑一个 AI 大模型，需要什么？很多人第一反应是：一张几万块的显卡，或者一个云端 API key，按 token 付费。
+
+今天我要颠覆这个认知。我们不租服务器、不调云端 API、不花一分钱 token 费用，就用你面前这台笔记本的浏览器，把 AI 模型跑起来。
+
+而且关键词是「AI PC」—— 这台电脑里其实藏着三个能算 AI 的引擎，今天我们就用浏览器把它们一个个唤醒。
+  </aside>
+</section>
+
+<!-- ============ 2 · 这堂课你会得到什么 ============ -->
+<section class="slide">
+  <div class="kicker">关于这 90 分钟</div>
+  <h2>这堂课，你会带走什么</h2>
+  <div class="cols">
+    <div class="col">
+      <div class="card"><h3>① 一套心智地图</h3><p>搞清 WebGPU / WebNN / ONNX Runtime Web / Transformers.js 各自是谁、怎么串起来。</p></div>
+      <div class="card"><h3>② 一个硬件直觉</h3><p>AI PC 的 CPU / GPU / NPU 分别擅长什么，浏览器怎么摸到它们。</p></div>
+    </div>
+    <div class="col">
+      <div class="card"><h3>③ 两个能跑的 Demo</h3><p>WebGPU 跑大语言模型对话；WebNN 跑图像分类。都在你自己浏览器里。</p></div>
+      <div class="card"><h3>④ 一个判断力</h3><p>什么任务该放本地、什么仍需云端 —— 工程上最值钱的取舍。</p></div>
+    </div>
+  </div>
+  <aside class="notes-src" data-time="0:30 – 1:30">
+这堂课不是纯理论。讲完你会带走四样东西。
+
+第一是地图。Web AI 这套技术栈名字很多，初学者容易晕。我会用一张图帮你把它们的关系钉死。
+
+第二是硬件直觉。AI PC 这个词满天飞，但很少有人讲清楚它和普通电脑的区别到底在哪 —— 答案是 NPU。
+
+第三，也是最重要的：两个你今天就能在自己浏览器里跑起来的 Demo。一个跑大模型对话，一个跑图像识别。
+
+第四是判断力。技术选型里最值钱的不是"会用"，而是"知道什么时候不该用"。本地推理很酷，但它有边界，我会讲清楚。
+  </aside>
+</section>
+
+<!-- ============ 3 · 钩子 DEMO ============ -->
+<section class="slide center">
+  <div class="kicker">LIVE DEMO · 现场演示</div>
+  <h2>先看一个<span class="accent">反直觉</span>的画面</h2>
+  <p class="big">我现在打开一个网页…<br>它在<span class="energy">本地</span>跑起了一个会对话的大语言模型。</p>
+  <p class="muted" style="margin-top:24px">没有后端服务器 · 没有 API key · 拔掉网线也能继续</p>
+  <aside class="notes-src" data-time="1:30 – 4:00">
+【现场操作】打开 track-a-webgpu-llm/index.html，点加载模型，输入"用一句话解释什么是 AI PC"，让它流式生成。
+
+边演示边说：注意看，文字是一个一个蹦出来的，这是模型在实时生成。现在我打开任务管理器 —— 看 GPU 占用，拉满了。说明这个计算是真的发生在我这台笔记本的 GPU 上，不是偷偷调了云端。
+
+【杀手锏】我现在把 WiFi 关掉……（关网）……再让它生成一次。看，照样能跑。因为模型已经下载到浏览器缓存里了，全程本地。
+
+这就是今天的主题：让浏览器变成一个 AI 运行时。接下来 80 分钟，我拆给你看这是怎么做到的。
+
+如果现场网络不稳，提前缓存好模型；或者用录屏兜底。
+  </aside>
+</section>
+
+<!-- ============ 4 · 云端 vs 本地三角 ============ -->
+<section class="slide">
+  <div class="kicker">为什么要在本地跑</div>
+  <h2>云端 vs 本地：三个维度的取舍</h2>
+  <table>
+    <tr><th>维度</th><th>云端 API</th><th>浏览器本地推理</th></tr>
+    <tr><td>成本</td><td>按 token 计费，量大很贵</td><td class="hl">零边际成本</td></tr>
+    <tr><td>隐私</td><td>数据上传到第三方服务器</td><td class="hl">数据不出本地</td></tr>
+    <tr><td>延迟</td><td>每次都要网络往返</td><td class="hl">本地直算，无网络</td></tr>
+    <tr><td>离线</td><td>断网即不可用</td><td class="hl">缓存后可离线</td></tr>
+    <tr><td>模型规模</td><td class="hl">可跑超大模型</td><td>受本地内存/算力限制</td></tr>
+    <tr><td>知识时效</td><td class="hl">易接入最新数据</td><td>取决于本地模型</td></tr>
+  </table>
+  <p class="muted" style="margin-top:18px">不是谁取代谁 —— 而是<span class="accent">该本地的本地，该云端的云端</span>。</p>
+  <aside class="notes-src" data-time="4:00 – 7:00">
+为什么要折腾本地推理？四个理由它赢，两个理由它输，看这张表。
+
+成本：云端按 token 收费，一个班 50 个学生天天调，账单很快上来。本地是零边际成本，电费而已。
+
+隐私：这是最硬的理由。医疗、法律、个人笔记这类数据，你愿意传给第三方吗？本地推理数据根本不出这台机器。
+
+延迟：云端每次请求都要网络往返，本地是直接算，省掉这一跳。
+
+离线：飞机上、地铁里、内网环境，云端直接歇菜，本地照跑。
+
+但要诚实 —— 本地也有输的地方：跑不了几百 B 的超大模型，本地内存装不下；知识时效也受限于你下载的那个模型。
+
+所以结论不是"本地取代云端"，而是工程师要有判断力：该本地的本地，该云端的云端。这句话这堂课会反复出现。
+  </aside>
+</section>
+
+<!-- ============ 5 · AI PC 三引擎 ============ -->
+<section class="slide">
+  <div class="kicker">AI PC 的硬件底座</div>
+  <h2>AI PC = <span class="accent">三个</span>能算 AI 的引擎</h2>
+  <div class="engines">
+    <div class="engine"><div class="ic">🧮</div><div class="lbl">CPU</div><div class="role">通用计算<br>什么都能干，但不快</div></div>
+    <div class="engine"><div class="ic">⚡</div><div class="lbl">GPU</div><div class="role">大规模并行<br>跑大模型的主力</div></div>
+    <div class="engine npu"><div class="ic">🧠</div><div class="lbl">NPU</div><div class="role">神经网络专用<br>低功耗 · AI PC 的标志</div></div>
+  </div>
+  <p style="margin-top:24px">普通电脑有 CPU、GPU。<span class="accent">AI PC 多了 NPU</span> —— 专为神经网络设计，能效极高，跑 AI 时风扇不转、续航友好。</p>
+  <aside class="notes-src" data-time="7:00 – 9:00">
+现在讲硬件。AI PC 和普通电脑差在哪？答案就在这三个方块。
+
+CPU，通用计算，什么都能干，但跑 AI 这种海量并行计算，它慢，因为核心数太少。
+
+GPU，几千个小核同时算，特别适合矩阵乘法，是跑大模型的主力。游戏显卡能跑 AI 就是这个原因。
+
+重点是第三个：NPU，神经网络处理单元。这是这一代 AI PC 的标志。它专门为神经网络的固定计算模式设计，最大的优点是能效 —— 同样跑一个 AI 任务，NPU 的功耗远低于 GPU，风扇都不用转，笔记本续航友好。
+
+记住这个分工：GPU 强在峰值算力，NPU 强在能效。后面你会看到 WebGPU 对应 GPU，WebNN 重点对应 NPU。
+  </aside>
+</section>
+
+<!-- ============ 6 · 全景地图 ============ -->
+<section class="slide">
+  <div class="kicker">今天的地图 · 先给全景</div>
+  <h2>从硬件到一行代码：完整技术栈</h2>
+  <div class="stack">
+    <div class="layer l1"><span class="t">Transformers.js</span><span class="d">最上层 · 一行 pipeline() 调用 Hugging Face 模型</span></div>
+    <div class="arrow-down">▲ 调用</div>
+    <div class="layer l2"><span class="t">ONNX Runtime Web</span><span class="d">中层 · 统一推理引擎，可切换 backend</span></div>
+    <div class="arrow-down">▲ 选择后端</div>
+    <div class="layer"><span class="t">WebGPU&nbsp;&nbsp;|&nbsp;&nbsp;WebNN</span><span class="d">浏览器标准 · 摸到硬件的桥梁</span></div>
+    <div class="arrow-down">▲ 驱动</div>
+    <div class="layer"><span class="t">AI PC：CPU · GPU · NPU</span><span class="d">硬件 · 真正干活的算力</span></div>
+  </div>
+  <p class="muted center" style="margin-top:18px">这张图今天会出现三次。<span class="accent">现在记个印象，最后我们再回来。</span></p>
+  <aside class="notes-src" data-time="9:00 – 10:00">
+这是今天最重要的一张图，是地图。我先给你全景，免得后面讲细节时你迷路。
+
+从下往上看：最底下是 AI PC 的硬件，CPU/GPU/NPU。
+
+往上一层，是浏览器标准 WebGPU 和 WebNN，它们是软件摸到硬件的桥梁 —— 浏览器有沙箱，本来碰不到底层硬件，这两个标准就是开的口子。
+
+再往上，ONNX Runtime Web，一个推理引擎，它把下面两个桥梁统一起来，让你能一键切换用哪个。
+
+最上面，Transformers.js，把一切简化成一行代码。
+
+这张图我会讲三遍：现在记个印象，每讲完一层回来标一次，最后收尾再完整走一遍。你只要记住"从一行代码，一路落到硬件"这个方向感就行。
+  </aside>
+</section>
+
+<!-- ============ 7 · 议程 ============ -->
+<section class="slide">
+  <div class="kicker">AGENDA · 路线图</div>
+  <h2>接下来 80 分钟怎么走</h2>
+  <div class="cols">
+    <div class="col">
+      <div class="card"><h3>WebGPU <span class="muted">10–25′</span></h3><p>浏览器的通用算力，大模型的底座</p></div>
+      <div class="card"><h3>WebNN <span class="muted">25–40′</span></h3><p>直达 NPU 的神经网络专用加速</p></div>
+      <div class="card"><h3>ONNX Runtime Web <span class="muted">40–55′</span></h3><p>统一推理引擎，三种 backend</p></div>
+    </div>
+    <div class="col">
+      <div class="card"><h3>Transformers.js <span class="muted">55–70′</span></h3><p>一行 pipeline() 调用模型</p></div>
+      <div class="card" style="border-color:var(--intel-blue)"><h3>🖐 动手实践 <span class="muted">70–87′</span></h3><p>轨道 A：WebGPU 跑 LLM<br>轨道 B：WebNN 跑 CV</p></div>
+      <div class="card"><h3>总结 + Q&A <span class="muted">87–90′</span></h3><p>全景闭环 + 作业</p></div>
+    </div>
+  </div>
+  <aside class="notes-src" data-time="10:00 – 10:30">
+路线图。我们自底向上走那张图：先讲两个桥梁 WebGPU 和 WebNN，再讲中层引擎 ONNX Runtime Web，然后是最上层的 Transformers.js。
+
+四块知识讲完，留出 17 分钟动手 —— 你们二选一，要么用 WebGPU 跑大模型对话，要么用 WebNN 跑图像识别。最后总结 + 答疑。
+
+节奏提示：理论部分我会讲得快，重点在让你建立直觉，不抠 API 细节。细节文档里都有，动手环节你自然会查。
+  </aside>
+</section>
+
+<!-- ============ 8 · MODULE: WebGPU ============ -->
+<section class="slide center">
+  <div class="kicker">模块一 · 10–25 min</div>
+  <h1><span class="accent">WebGPU</span><br>浏览器的通用算力</h1>
+  <p class="big muted">让网页摸到 GPU 的几千个核心</p>
+  <aside class="notes-src" data-time="10:30 – 11:00">
+第一个模块，WebGPU。一句话定位：它是浏览器摸到 GPU 通用算力的那把钥匙。
+
+这一节的目标不是教你写 GPU 代码，而是让你理解：为什么跑大模型需要它，它和老的 WebGL 差在哪。
+  </aside>
+</section>
+
+<!-- ============ 9 · WebGPU 痛点 ============ -->
+<section class="slide">
+  <div class="kicker">问题先行</div>
+  <h2>痛点：浏览器原来<span class="accent">摸不到</span> GPU 算力</h2>
+  <div class="cols">
+    <div class="col">
+      <div class="card">
+        <h3>浏览器是个沙箱</h3>
+        <p>为了安全，网页不能直接碰底层硬件。想用 GPU 做计算？没有正经的口子。</p>
+      </div>
+      <div class="card">
+        <h3>老办法：WebGL 凑合</h3>
+        <p>WebGL 是为<span class="accent">画 3D 图形</span>设计的。想用它做通用计算，得把数据伪装成"纹理和像素"，绕一大圈，又难又慢。</p>
+      </div>
+    </div>
+    <div class="col">
+      <div class="card" style="border-color:var(--intel-blue)">
+        <h3>结果</h3>
+        <p>在 WebGPU 之前，浏览器里跑 AI 基本靠 CPU（WASM），慢到没法用大模型。</p>
+        <p class="muted">GPU 明明就在那，网页却用不上 —— 这就是 WebGPU 要解决的问题。</p>
+      </div>
+    </div>
+  </div>
+  <aside class="notes-src" data-time="11:00 – 13:00">
+讲新技术，我习惯先讲它解决什么痛点，否则你记不住。
+
+浏览器是个沙箱，为了安全，网页不能随便碰你的硬件 —— 想想看，如果任何网页都能直接操控你的 GPU 和内存，那太危险了。所以历史上，网页想用 GPU 算力，没有正经口子。
+
+那 WebGL 呢？WebGL 确实能用 GPU，但它是为画 3D 图形设计的，比如游戏、地图。你想用它做 AI 计算，得把矩阵数据伪装成图片纹理，把计算伪装成"渲染像素"，绕一大圈，代码难写，性能也打折。
+
+所以 WebGPU 出现之前，浏览器里跑 AI 基本只能靠 CPU，也就是 WASM，慢得跑不动大模型。GPU 明明就躺在你电脑里，网页却够不着。这就是 WebGPU 要解决的核心问题。
+  </aside>
+</section>
+
+<!-- ============ 10 · WebGPU 是什么 ============ -->
+<section class="slide">
+  <div class="kicker">WebGPU 是什么</div>
+  <h2>现代 GPU 接口，<span class="accent">原生支持通用计算</span></h2>
+  <ul>
+    <li><b>定位</b>：W3C 标准，浏览器里的下一代 GPU API，取代 WebGL。</li>
+    <li><b>底层</b>：直接映射到原生的 <span class="accent">Vulkan / Metal / Direct3D 12</span>，性能接近原生。</li>
+    <li><b>关键能力</b>：原生支持 <span class="energy">Compute Shader（计算着色器）</span> —— 不用再伪装成画图，可以直接写"通用并行计算"。</li>
+    <li><b>对 AI 的意义</b>：矩阵乘法、张量运算这些 AI 的核心操作，终于能在浏览器里高效跑在 GPU 上。</li>
+  </ul>
+  <div class="card" style="margin-top:8px">
+    <p class="muted">一句话：<span class="accent">WebGPU 让网页第一次能正经地把 GPU 当成计算器用，而不只是画图工具。</span></p>
+  </div>
+  <aside class="notes-src" data-time="13:00 – 15:00">
+那 WebGPU 是什么？它是 W3C 的标准，浏览器里的下一代 GPU 接口，定位就是取代 WebGL。
+
+它底层直接对接操作系统的原生图形 API —— Windows 上是 Direct3D 12，Mac 上是 Metal，Linux/安卓上是 Vulkan。所以它性能接近原生，不是玩具。
+
+最关键的一点：它原生支持 Compute Shader，计算着色器。这个词你不用记，记住它的意义：你终于可以直接写"通用并行计算"，而不用像 WebGL 那样伪装成画图。
+
+对 AI 来说，这就是解放。AI 的核心运算是什么？矩阵乘法、张量运算。这些现在能高效地跑在 GPU 上了。
+
+一句话总结：WebGPU 让网页第一次能把 GPU 当成一台正经的计算器，而不只是画图工具。
+  </aside>
+</section>
+
+<!-- ============ 11 · WebGPU vs WebGL ============ -->
+<section class="slide">
+  <div class="kicker">对比</div>
+  <h2>WebGPU vs WebGL</h2>
+  <table>
+    <tr><th>维度</th><th>WebGL（老）</th><th>WebGPU（新）</th></tr>
+    <tr><td>设计目的</td><td>3D 图形渲染</td><td class="hl">图形 + 通用计算</td></tr>
+    <tr><td>通用计算</td><td>要伪装成纹理，绕路</td><td class="hl">原生 Compute Shader</td></tr>
+    <tr><td>底层对应</td><td>OpenGL（老一代）</td><td class="hl">Vulkan / Metal / D3D12</td></tr>
+    <tr><td>多线程/并行</td><td>受限</td><td class="hl">现代并行模型</td></tr>
+    <tr><td>跑 AI</td><td>勉强、慢</td><td class="hl">高效、可用大模型</td></tr>
+  </table>
+  <p class="muted" style="margin-top:18px">类比：WebGL 像用<span class="accent">画笔</span>硬算数学题；WebGPU 直接给你一台<span class="accent">并行计算机</span>。</p>
+  <aside class="notes-src" data-time="15:00 – 16:30">
+直接对比一下新老两代。
+
+设计目的：WebGL 就是为画图生的；WebGPU 一开始就把通用计算当成一等公民。
+
+通用计算：WebGL 要绕路伪装，WebGPU 原生支持。
+
+底层：WebGL 对应老的 OpenGL，WebGPU 对应现代的 Vulkan、Metal、D3D12，这是代差。
+
+跑 AI：WebGL 勉强能跑但很慢，WebGPU 能高效跑，甚至能跑起几亿参数的语言模型。
+
+一个类比帮你记：用 WebGL 做 AI，像逼着一个画家用画笔去算数学题，他能算但很别扭；WebGPU 直接给你一台为并行计算设计的机器。
+  </aside>
+</section>
+
+<!-- ============ 12 · compute shader 心智模型 ============ -->
+<section class="slide">
+  <div class="kicker">建立直觉 · 不写代码</div>
+  <h2>为什么 GPU 适合 AI：<span class="accent">并行</span>的力量</h2>
+  <div class="cols">
+    <div class="col">
+      <div class="card">
+        <h3>CPU 的算法</h3>
+        <p class="big">几个<span class="accent">大力士</span>，一个接一个搬箱子。</p>
+        <p class="muted">核心少（几个~几十个），但每个很强、很灵活。适合复杂、有先后顺序的任务。</p>
+      </div>
+    </div>
+    <div class="col">
+      <div class="card" style="border-color:var(--intel-blue)">
+        <h3>GPU 的算法</h3>
+        <p class="big">几千个<span class="energy">小工</span>，同时各搬一个箱子。</p>
+        <p class="muted">核心极多（几千个），每个简单，但一起上。适合"同一种运算重复几百万次"。</p>
+      </div>
+    </div>
+  </div>
+  <div class="card" style="margin-top:8px">
+    <p>大模型在算什么？本质是<span class="accent">海量的矩阵乘法</span> —— 同一种运算重复几百万次。<br>这正是 GPU 的主场。<span class="energy">这就是为什么 LLM 要用 WebGPU。</span></p>
+  </div>
+  <aside class="notes-src" data-time="16:30 – 19:00">
+不写代码，给你一个直觉，理解为什么 GPU 适合 AI。
+
+想象搬一仓库的箱子。CPU 的方式是：雇几个大力士，一个接一个搬。每个人很强、很聪明，能处理复杂情况，但人少，量大就慢。
+
+GPU 的方式是：雇几千个小工，每人同时搬一个箱子。每个小工很弱、只会干简单活，但人多，一起上，瞬间搬完。
+
+关键在于任务的性质。如果任务是"同一种简单操作，重复几百万次"，那 GPU 这种打法碾压 CPU。
+
+大模型在算什么？剥开看，本质就是海量的矩阵乘法 —— 把输入和权重矩阵相乘，同一种运算重复几百万次。这正是 GPU 的主场。
+
+所以这句话你要记住：LLM 用 WebGPU，是因为它要做海量并行的矩阵乘，而 GPU 天生为此而生。
+  </aside>
+</section>
+
+<!-- ============ 13 · WebGPU 兼容性 ============ -->
+<section class="slide">
+  <div class="kicker">落地现状</div>
+  <h2>WebGPU 现在能用了吗？<span class="accent">能。</span></h2>
+  <ul>
+    <li><b>Chrome / Edge</b>：113 版起<span class="accent">默认开启</span>，桌面端开箱即用。</li>
+    <li><b>Safari</b>：已在新版 Safari / iOS 支持。</li>
+    <li><b>Firefox</b>：逐步推进中。</li>
+    <li><b>检测</b>：<code>if ('gpu' in navigator) { /* 支持 WebGPU */ }</code></li>
+  </ul>
+  <div class="card" style="margin-top:8px;border-color:var(--intel-blue)">
+    <p>课堂提示：今天的<span class="accent">轨道 A（跑大模型）</span>就靠 WebGPU。用最新版 Chrome 或 Edge 基本都能直接跑。</p>
+  </div>
+  <aside class="notes-src" data-time="19:00 – 20:30">
+你可能会问：这玩意儿现在能用吗？还是只是个未来标准？答案是：能用了，已经落地。
+
+Chrome 和 Edge 从 113 版开始默认开启，现在桌面端基本开箱即用。Safari 新版也支持了，iOS 上能跑。Firefox 在推进。
+
+代码里检测很简单，看 navigator 上有没有 gpu 这个属性就行。
+
+课堂提示一句：今天动手环节的轨道 A，跑大语言模型，靠的就是 WebGPU。你们用最新版 Chrome 或 Edge，基本都能直接跑起来，待会儿就验证。
+
+（这一页节奏可以快，主要是给学生吃定心丸：不是画饼，是真能用。）
+  </aside>
+</section>
+
+<!-- ============ 14 · MODULE: WebNN ============ -->
+<section class="slide center">
+  <div class="kicker">模块二 · 25–40 min</div>
+  <h1><span class="accent">WebNN API</span><br>直达 CPU / GPU / NPU</h1>
+  <p class="big muted">浏览器里唯一能摸到 NPU 的神经网络专用标准</p>
+  <aside class="notes-src" data-time="20:30 – 21:00">
+第二个模块，WebNN。如果说 WebGPU 是通用算力的钥匙，那 WebNN 是神经网络专用加速的钥匙，而且是目前 Web 端唯一能摸到 NPU 的标准。
+
+这一节我会讲清楚：它和 WebGPU 到底分工有什么不同，以及为什么 Intel AI PC 的 NPU 这么重要。
+  </aside>
+</section>
+
+<!-- ============ 15 · WebNN 痛点 ============ -->
+<section class="slide">
+  <div class="kicker">问题先行</div>
+  <h2>痛点：通用算力<span class="accent">不够省电</span></h2>
+  <div class="cols">
+    <div class="col">
+      <div class="card">
+        <h3>WebGPU 很强，但…</h3>
+        <p>用 GPU 跑 AI，算力够，可是<span class="accent">功耗高、发热大</span>。笔记本上跑一会儿风扇狂转、电量哗哗掉。</p>
+      </div>
+      <div class="card">
+        <h3>而且要自己组织计算</h3>
+        <p>WebGPU 是通用工具，怎么把神经网络拆成高效的并行计算，得开发者/库自己操心。</p>
+      </div>
+    </div>
+    <div class="col">
+      <div class="card" style="border-color:var(--intel-blue)">
+        <h3>能不能更聪明？</h3>
+        <p>神经网络的计算其实很有规律（卷积、矩阵乘、激活…）。<br>如果有一块<span class="accent">专门为这些运算设计的硬件</span>（NPU），再有一个标准直接把任务交给它 —— 又快又省电。</p>
+        <p class="energy">这就是 WebNN。</p>
+      </div>
+    </div>
+  </div>
+  <aside class="notes-src" data-time="21:00 – 23:00">
+同样先讲痛点。WebGPU 已经很强了，为什么还要 WebNN？
+
+因为 GPU 跑 AI，算力够，但有代价：功耗高、发热大。你笔记本用 GPU 跑模型，跑一会儿风扇就狂转，电量哗哗往下掉。对移动设备这是大问题。
+
+另一个问题：WebGPU 是通用工具，它不知道你在跑神经网络。怎么把一个神经网络拆成高效的 GPU 计算，得开发者或者库自己操心，很复杂。
+
+那能不能更聪明点？神经网络的计算其实特别有规律 —— 来来去去就是卷积、矩阵乘、激活函数这几样。如果我造一块硬件，专门为这几样运算优化，再提供一个标准，让你能把整个网络直接"交给"这块硬件去跑，那不就又快又省电吗？
+
+这块专用硬件就是 NPU，这个标准就是 WebNN。
+  </aside>
+</section>
+
+<!-- ============ 16 · WebNN 是什么 ============ -->
+<section class="slide">
+  <div class="kicker">WebNN 是什么</div>
+  <h2>把神经网络<span class="accent">交给系统</span>去加速</h2>
+  <ul>
+    <li><b>定位</b>：W3C 正在标准化的<span class="accent">神经网络专用</span> Web API。</li>
+    <li><b>思路</b>：你描述一张<span class="energy">计算图</span>（用了哪些算子），WebNN 把它交给操作系统的 ML 加速栈，由硬件决定怎么跑最优。</li>
+    <li><b>能摸到的硬件</b>：CPU、GPU，以及关键的 <span class="accent">NPU</span> —— 这是 Web 端目前唯一直达 NPU 的标准。</li>
+    <li><b>和 WebGPU 的区别</b>：WebGPU 给你"算力"，你自己组织；WebNN 给你"加速服务"，你只描述网络。</li>
+  </ul>
+  <div class="card" style="margin-top:8px">
+    <p class="muted">类比：WebGPU 是<span class="accent">租一间厨房自己做菜</span>；WebNN 是<span class="accent">点一道菜，后厨怎么高效做是它的事</span>。</p>
+  </div>
+  <aside class="notes-src" data-time="23:00 – 25:00">
+WebNN 是什么？W3C 正在标准化的、神经网络专用的 Web API。
+
+它的思路和 WebGPU 很不一样。WebGPU 是给你算力，你自己写怎么算。WebNN 是：你只要描述一张计算图 —— 我这个网络用了卷积、用了矩阵乘、用了哪些激活 —— 然后把这张图交给操作系统的 ML 加速栈，剩下的事，"怎么在硬件上跑得最优"，由系统和硬件去决定。
+
+它能摸到 CPU、GPU，以及最关键的 NPU。划重点：WebNN 是目前 Web 端唯一能直达 NPU 的标准。WebGPU 摸不到 NPU。
+
+一个类比：WebGPU 像租一间厨房，锅碗瓢盆给你，菜你自己做。WebNN 像去餐厅点一道菜，你只说要什么，后厨怎么高效做出来是它的事。对开发者来说，WebNN 更省心，对硬件来说，它能做更激进的优化。
+  </aside>
+</section>
+
+<!-- ============ 17 · MLGraphBuilder ============ -->
+<section class="slide">
+  <div class="kicker">构图思路 · 看个意思</div>
+  <h2><code>MLGraphBuilder</code>：把网络<span class="accent">搭</span>出来</h2>
+  <pre><code><span class="tok-com">// 1. 拿到一个加速上下文（可指定偏好 NPU）</span>
+<span class="tok-key">const</span> context = <span class="tok-key">await</span> navigator.ml.<span class="tok-fn">createContext</span>({ deviceType: <span class="tok-str">'npu'</span> });
+<span class="tok-key">const</span> builder = <span class="tok-key">new</span> <span class="tok-fn">MLGraphBuilder</span>(context);
+
+<span class="tok-com">// 2. 用算子搭计算图：输入 → 卷积 → 激活</span>
+<span class="tok-key">const</span> input  = builder.<span class="tok-fn">input</span>(<span class="tok-str">'x'</span>, { dataType: <span class="tok-str">'float32'</span>, shape: [<span class="tok-num">1</span>,<span class="tok-num">3</span>,<span class="tok-num">224</span>,<span class="tok-num">224</span>] });
+<span class="tok-key">const</span> conv   = builder.<span class="tok-fn">conv2d</span>(input, weights);
+<span class="tok-key">const</span> output = builder.<span class="tok-fn">relu</span>(conv);
+
+<span class="tok-com">// 3. 编译成图，交给硬件执行</span>
+<span class="tok-key">const</span> graph = <span class="tok-key">await</span> builder.<span class="tok-fn">build</span>({ output });</code></pre>
+  <p class="muted">实际开发你<span class="accent">几乎不会手写这个</span> —— ONNX Runtime Web / Transformers.js 会帮你生成。看懂"描述图、交给硬件"这个思路即可。</p>
+  <aside class="notes-src" data-time="25:00 – 27:00">
+给你看一眼 WebNN 的代码长什么样，建立印象就行，不用记。
+
+第一步，拿一个加速上下文，注意这里可以指定 deviceType 是 'npu'，明确告诉系统我想用 NPU。
+
+第二步，用 builder 一个算子一个算子把网络搭出来：定义输入，接一个卷积 conv2d，再接一个激活 relu。你看，这就是在"描述一张图"，描述这个网络由哪些运算组成。
+
+第三步，build，把这张图编译好，交给硬件执行。
+
+但我要强调：实际开发你几乎永远不会手写这段代码。太底层了。真实场景里，ONNX Runtime Web 或者 Transformers.js 会自动帮你生成这些。我给你看，只是让你理解 WebNN 的工作方式 —— 描述图、交给硬件。这个思路记住就够了。
+  </aside>
+</section>
+
+<!-- ============ 18 · WebGPU vs WebNN 分工 ============ -->
+<section class="slide">
+  <div class="kicker">最关键的一张对比</div>
+  <h2>WebGPU vs WebNN：<span class="accent">分工</span>，不是竞争</h2>
+  <table>
+    <tr><th></th><th>WebGPU</th><th>WebNN</th></tr>
+    <tr><td>本质</td><td>通用并行算力</td><td class="hl">神经网络专用加速</td></tr>
+    <tr><td>你提供什么</td><td>自己写计算逻辑</td><td class="hl">只描述网络结构</td></tr>
+    <tr><td>主要硬件</td><td>GPU</td><td class="hl">NPU（也含 CPU/GPU）</td></tr>
+    <tr><td>强项</td><td>灵活、峰值算力高</td><td class="hl">能效高、省电</td></tr>
+    <tr><td>典型场景</td><td>大语言模型生成</td><td class="hl">CNN 视觉、持续推理</td></tr>
+    <tr><td>今天的轨道</td><td class="hl">轨道 A：LLM</td><td class="hl">轨道 B：图像分类</td></tr>
+  </table>
+  <p class="muted" style="margin-top:16px"><span class="accent">两者会共存</span>：未来甚至能 WebGPU 算一部分、WebNN 算一部分，各取所长。</p>
+  <aside class="notes-src" data-time="27:00 – 29:30">
+这是整个模块最关键的一张表，请认真看。WebGPU 和 WebNN 不是竞争关系，是分工。
+
+本质：WebGPU 是通用算力，WebNN 是神经网络专用加速。
+
+你提供什么：WebGPU 要你自己写计算逻辑；WebNN 你只描述网络结构，省心。
+
+主要硬件：WebGPU 主打 GPU；WebNN 能摸到 NPU，这是它的独门武器。
+
+强项：WebGPU 灵活、峰值算力高；WebNN 能效高、省电。
+
+典型场景：WebGPU 适合大语言模型这种生成任务，计算密集、追求吞吐；WebNN 适合 CNN 视觉、需要长时间持续推理的场景，比如摄像头实时识别，省电就是命。
+
+这正好对应今天的两条轨道：轨道 A 用 WebGPU 跑 LLM，轨道 B 用 WebNN 跑图像分类。我特意这么设计，让你亲手体会两者擅长的不同场景。
+
+最后一句：未来它们会共存，甚至一个应用里 WebGPU 算一部分、WebNN 算一部分，各取所长。
+  </aside>
+</section>
+
+<!-- ============ 19 · NPU 能效 ============ -->
+<section class="slide">
+  <div class="kicker">Intel 主线 · 为什么 NPU 重要</div>
+  <h2>NPU：同样的活，<span class="accent">几分之一</span>的电</h2>
+  <div class="cols">
+    <div class="col">
+      <div class="card">
+        <h3>GPU 跑 AI</h3>
+        <p class="huge">🔥</p>
+        <p>峰值算力高，但功耗大、发热高。短时冲刺型任务划算。</p>
+      </div>
+    </div>
+    <div class="col">
+      <div class="card" style="border-color:var(--intel-blue)">
+        <h3>NPU 跑 AI</h3>
+        <p class="huge">🍃</p>
+        <p>为神经网络定制电路，<span class="accent">能效比远高于 GPU</span>。风扇不转、续航友好，适合持续、常驻的 AI。</p>
+      </div>
+    </div>
+  </div>
+  <div class="card" style="margin-top:8px">
+    <p>场景举例：视频会议背景虚化、实时字幕、本地语音助手 —— 这些要<span class="accent">一直开着</span>的 AI，用 NPU 才不会烧光电池。</p>
+  </div>
+  <aside class="notes-src" data-time="29:30 – 31:30">
+专门讲 NPU 为什么重要，这是 AI PC 的核心卖点。
+
+GPU 跑 AI 是一团火 —— 峰值算力高，但功耗大、发热高。适合短时间冲刺的任务，算完就歇。
+
+NPU 跑 AI 是一片叶子 —— 它是为神经网络定制的电路，能效比远高于 GPU。同样一个 AI 任务，NPU 可能只用 GPU 几分之一的电，而且风扇都不用转。
+
+什么场景需要这个？想想那些要一直开着的 AI 功能：视频会议的背景虚化、实时字幕、本地语音助手、摄像头的人物追踪。这些是常驻的、持续推理的，如果用 GPU，你的笔记本电池撑不过俩小时。用 NPU，它能安静地在后台跑一整天。
+
+这就是为什么 Intel 把 NPU 做进 AI PC，也是为什么 WebNN 能直达 NPU 这件事，对 Web 开发者价值巨大。
+  </aside>
+</section>
+
+<!-- ============ 20 · WebNN + OpenVINO ============ -->
+<section class="slide">
+  <div class="kicker">Intel 软硬件协同</div>
+  <h2>WebNN 底下，是 <span class="accent">OpenVINO™</span> 在干活</h2>
+  <div class="stack">
+    <div class="layer l1"><span class="t">你的网页（WebNN API）</span><span class="d">描述神经网络</span></div>
+    <div class="arrow-down">▼</div>
+    <div class="layer l2"><span class="t">浏览器 WebNN 实现</span><span class="d">Windows 上可对接 Intel 加速栈</span></div>
+    <div class="arrow-down">▼</div>
+    <div class="layer" style="border-color:var(--intel-energy)"><span class="t">OpenVINO™ Runtime</span><span class="d">Intel 的推理优化引擎</span></div>
+    <div class="arrow-down">▼</div>
+    <div class="layer"><span class="t">Intel CPU · GPU · NPU</span><span class="d">真正执行</span></div>
+  </div>
+  <p class="muted center" style="margin-top:14px">同一份 WebNN 代码，<span class="accent">底层由 OpenVINO 调度到最合适的 Intel 硬件</span> —— 开发者无感，硬件全用上。</p>
+  <aside class="notes-src" data-time="31:30 – 33:30">
+再往下挖一层，讲软硬件协同，这是 Intel 这套体系的精髓。
+
+你的网页调 WebNN API，描述一个神经网络。浏览器的 WebNN 实现接到这个请求，在 Windows + Intel 平台上，它可以对接到 Intel 的加速栈。
+
+往下，是 OpenVINO Runtime —— 这是 Intel 的推理优化引擎，专门负责把一个神经网络在 Intel 硬件上跑到最优。再往下，才是真正的 CPU、GPU、NPU。
+
+精妙的地方在于：你写的还是那份标准的 WebNN 代码，完全不用关心底层。但底层 OpenVINO 会智能地把你的计算调度到最合适的硬件上 —— 这个算子放 NPU，那个放 GPU，开发者无感，但硬件全被用上了。
+
+这就是参考课里讲的"软硬件协同"在 Web 端的体现：上层是开放标准，下层是 Intel 的优化引擎，中间无缝衔接。
+  </aside>
+</section>
+
+<!-- ============ 21 · WebNN 现状 ============ -->
+<section class="slide">
+  <div class="kicker">落地现状 · 实话实说</div>
+  <h2>WebNN 现在能用吗？<span class="accent">预览阶段，可体验</span></h2>
+  <ul>
+    <li><b>标准状态</b>：W3C 工作草案，仍在演进，算子覆盖持续扩展中。</li>
+    <li><b>浏览器</b>：Edge / Chrome 可通过开关启用 —— <code>chrome://flags</code> → 开启 <code>#web-machine-learning-neural-network</code>。</li>
+    <li><b>最佳平台</b>：Intel AI PC（带 NPU）+ 最新驱动，体验最完整。</li>
+    <li><b>降级</b>：不支持时，ONNX Runtime Web 会自动回退到 <span class="accent">WASM(CPU)</span>，应用不崩。</li>
+  </ul>
+  <div class="card" style="margin-top:8px;border-color:var(--warn)">
+    <p>诚实提示：WebNN 比 WebGPU <span class="accent">更新、更前沿</span>。今天轨道 B 我们会准备 WASM 降级方案，确保人人能跑。</p>
+  </div>
+  <aside class="notes-src" data-time="33:30 – 35:30">
+实话实说 WebNN 的成熟度，不夸大。
+
+标准状态：还是 W3C 的工作草案，在演进，支持的算子还在持续扩展，不是所有模型都能跑。
+
+浏览器：Edge 和 Chrome 里需要手动开开关，去 chrome://flags 把那个 web-machine-learning 的 flag 打开。不像 WebGPU 那样默认就开。
+
+最佳体验平台：Intel 的 AI PC，带 NPU，配最新驱动，这是 WebNN 跑得最完整的环境。
+
+好消息是降级很优雅：如果你的环境不支持 WebNN，ONNX Runtime Web 会自动回退到 WASM，也就是用 CPU 跑，应用不会崩，只是慢一点。
+
+所以诚实地说：WebNN 比 WebGPU 更前沿、更新。今天轨道 B 我会准备好 WASM 降级方案，保证就算你的浏览器没开 WebNN，也能把 Demo 跑起来，体验到流程。
+  </aside>
+</section>
+
+<!-- ============ 22 · MODULE: ORT Web ============ -->
+<section class="slide center">
+  <div class="kicker">模块三 · 40–55 min</div>
+  <h1><span class="accent">ONNX Runtime Web</span><br>统一推理引擎</h1>
+  <p class="big muted">一个模型，三种 backend，换一行就换硬件</p>
+  <aside class="notes-src" data-time="35:30 – 36:00">
+第三个模块，ONNX Runtime Web，简称 ORT Web。
+
+前面两个模块是底层的桥梁，比较硬核。从这里开始往上走，越来越接近你平时写的代码。ORT Web 是中间这层引擎，它的核心价值就一句话：一个模型，三种后端，换一行配置就能换硬件。
+  </aside>
+</section>
+
+<!-- ============ 23 · ONNX 格式 ============ -->
+<section class="slide">
+  <div class="kicker">先搞懂 ONNX</div>
+  <h2>ONNX：模型的<span class="accent">通用格式</span></h2>
+  <div class="cols">
+    <div class="col">
+      <div class="card">
+        <h3>问题</h3>
+        <p>模型在 PyTorch 训练、在 TensorFlow 训练… 格式各不相同，换个地方部署就头疼。</p>
+      </div>
+      <div class="card" style="border-color:var(--intel-blue)">
+        <h3>ONNX 的方案</h3>
+        <p>一个<span class="accent">开放的中间格式</span>。各框架训练完都能导出成 <code>.onnx</code>，到处都能加载运行。</p>
+      </div>
+    </div>
+    <div class="col">
+      <div class="card">
+        <h3>类比</h3>
+        <p class="big">ONNX 就像 AI 模型界的 <span class="accent">PDF</span>。</p>
+        <p class="muted">不管你用什么软件写的，导成 PDF，谁都能打开。模型导成 ONNX，哪儿都能跑。</p>
+      </div>
+    </div>
+  </div>
+  <aside class="notes-src" data-time="36:00 – 38:00">
+先搞懂 ONNX 是什么，这是 ORT Web 的基础。
+
+问题是这样的：模型有的人用 PyTorch 训练，有的人用 TensorFlow，还有别的框架，各家保存格式都不一样。你训练好一个模型想拿到别处部署，格式不兼容，很麻烦。
+
+ONNX 的方案：定一个开放的中间格式。不管你用什么框架训练，训练完都能导出成一个 .onnx 文件，然后这个文件在任何支持 ONNX 的地方都能加载运行。
+
+最好记的类比：ONNX 就是 AI 模型界的 PDF。你用 Word、用 Pages、用什么都行，导成 PDF，对方不管什么设备都能打开。模型导成 ONNX，也是哪儿都能跑 —— 包括我们今天的主角，浏览器。
+  </aside>
+</section>
+
+<!-- ============ 24 · 引擎在栈中的位置 ============ -->
+<section class="slide">
+  <div class="kicker">它在哪一层</div>
+  <h2>ORT Web 是<span class="accent">承上启下</span>的那一层</h2>
+  <div class="stack">
+    <div class="layer"><span class="t">你的代码 / Transformers.js</span><span class="d">"我要跑这个 ONNX 模型"</span></div>
+    <div class="arrow-down">▼</div>
+    <div class="layer l2"><span class="t">ONNX Runtime Web</span><span class="d">加载模型 · 选后端 · 调度执行</span></div>
+    <div class="arrow-down">▼ 选一个 Execution Provider</div>
+    <div class="layer"><span class="t">WASM (CPU) &nbsp;|&nbsp; WebGPU &nbsp;|&nbsp; WebNN</span><span class="d">实际算力来源</span></div>
+  </div>
+  <p class="muted center" style="margin-top:16px">上面只管"<span class="accent">要跑模型</span>"，下面是"<span class="accent">三种硬件后端</span>"。ORT Web 负责把上面的请求落到下面某个后端。</p>
+  <aside class="notes-src" data-time="38:00 – 40:00">
+ORT Web 在我们那张大图里处于承上启下的位置，这页讲清楚它两头连着谁。
+
+上面：是你的代码，或者更常见的，是 Transformers.js。它们说"我要跑这个 ONNX 模型"。
+
+ORT Web 在中间：它负责把模型文件加载进来，选一个后端，然后调度执行。
+
+下面：是三种 Execution Provider，执行后端 —— WASM 用 CPU，WebGPU 用 GPU，WebNN 用 NPU/GPU。这就是前两个模块讲的东西，现在它们以"后端选项"的身份出现了。
+
+所以 ORT Web 干的事很清楚：上面只管说要跑什么模型，下面有三种硬件后端，ORT Web 负责把请求落到你选的那个后端上。它是个调度员、翻译官。
+  </aside>
+</section>
+
+<!-- ============ 25 · 三 backend 对比 ============ -->
+<section class="slide">
+  <div class="kicker">核心取舍</div>
+  <h2>三种 Execution Provider 怎么选</h2>
+  <table>
+    <tr><th>Backend</th><th>跑在</th><th>优点</th><th>取舍</th><th>适合</th></tr>
+    <tr><td class="hl">WASM</td><td>CPU</td><td>兼容性最好，处处能跑</td><td>最慢</td><td>兜底 / 小模型</td></tr>
+    <tr><td class="hl">WebGPU</td><td>GPU</td><td>并行强，吞吐高</td><td>需 GPU 支持</td><td>大模型 / LLM</td></tr>
+    <tr><td class="hl">WebNN</td><td>NPU/GPU/CPU</td><td>能效高、省电</td><td>较新，算子在扩</td><td>CNN 视觉 / 常驻推理</td></tr>
+  </table>
+  <div class="card" style="margin-top:18px">
+    <p><span class="accent">选择策略</span>：能 WebGPU / WebNN 就用，<span class="accent">自动回退</span> WASM 兜底。一份代码，最优体验 + 永不崩。</p>
+  </div>
+  <aside class="notes-src" data-time="40:00 – 42:30">
+这三个后端怎么选，是工程上的核心取舍，看这张表。
+
+WASM，跑在 CPU 上。优点是兼容性无敌，任何浏览器、任何设备都能跑。缺点是慢。定位是兜底，或者跑很小的模型。
+
+WebGPU，跑在 GPU 上。并行能力强，吞吐高。缺点是需要 GPU 和 WebGPU 支持。适合大模型，尤其是 LLM。
+
+WebNN，跑在 NPU/GPU/CPU 上。优点是能效高、省电。缺点是比较新，算子还在扩展。适合 CNN 视觉任务和需要常驻的推理。
+
+实战里的选择策略很简单：优先用 WebGPU 或 WebNN，如果环境不支持，自动回退到 WASM 兜底。这样一份代码，在好的设备上跑出最优体验，在差的设备上也永远不崩。这是 ORT Web 帮你省心的地方。
+  </aside>
+</section>
+
+<!-- ============ 26 · 最小推理代码 ============ -->
+<section class="slide">
+  <div class="kicker">看一段真代码</div>
+  <h2>ORT Web 最小推理：四步</h2>
+  <pre><code><span class="tok-com">// 1. 引入 ONNX Runtime Web</span>
+<span class="tok-key">import</span> * <span class="tok-key">as</span> ort <span class="tok-key">from</span> <span class="tok-str">'onnxruntime-web'</span>;
+
+<span class="tok-com">// 2. 创建推理会话 —— 这里选后端！优先 WebGPU，回退 WASM</span>
+<span class="tok-key">const</span> session = <span class="tok-key">await</span> ort.InferenceSession.<span class="tok-fn">create</span>(<span class="tok-str">'model.onnx'</span>, {
+  executionProviders: [<span class="tok-str">'webgpu'</span>, <span class="tok-str">'wasm'</span>]
+});
+
+<span class="tok-com">// 3. 准备输入张量</span>
+<span class="tok-key">const</span> input = <span class="tok-key">new</span> ort.Tensor(<span class="tok-str">'float32'</span>, data, [<span class="tok-num">1</span>, <span class="tok-num">3</span>, <span class="tok-num">224</span>, <span class="tok-num">224</span>]);
+
+<span class="tok-com">// 4. 跑！</span>
+<span class="tok-key">const</span> results = <span class="tok-key">await</span> session.<span class="tok-fn">run</span>({ x: input });</code></pre>
+  <p class="muted">换硬件？只改第 2 步的 <code>executionProviders</code> —— 比如换成 <code>['webnn','wasm']</code>。其余<span class="accent">一字不动</span>。</p>
+  <aside class="notes-src" data-time="42:30 – 45:00">
+看一段真实代码，体会 ORT Web 多简洁。四步。
+
+第一步，引入 onnxruntime-web 这个库。
+
+第二步，创建推理会话，传入模型文件。注意这一行最关键 —— executionProviders 这个数组，就是在这里选后端！我写的是先试 webgpu，不行就回退 wasm。这个数组就是前面讲的"优先用好的，回退兜底"策略的代码体现。
+
+第三步，准备输入。AI 模型的输入是张量 Tensor，这里是一个 1×3×224×224 的图像张量，就是一张 224×224 的彩色图。
+
+第四步，run，跑起来，拿结果。
+
+最想让你记住的一点：如果我想从 GPU 换到 NPU，我只需要改第二步那一行，把 'webgpu' 换成 'webnn'，其他代码一字不动。这就是"换一行就换硬件"的真正含义。模型不用改、输入输出不用改，只换后端。
+  </aside>
+</section>
+
+<!-- ============ 27 · 换硬件 ============ -->
+<section class="slide center">
+  <div class="kicker">本模块的核心收获</div>
+  <h2 class="quote">同一个 ONNX 模型，<br>改一行 <code>executionProviders</code>，<br>就能在 <span class="accent">CPU / GPU / NPU</span> 之间切换。</h2>
+  <p class="big muted" style="margin-top:20px">ORT Web 把"用什么硬件"变成了一个<span class="accent">配置项</span>，而不是一次重写。</p>
+  <aside class="notes-src" data-time="45:00 – 46:30">
+这页是 ORT Web 模块的核心收获，我让它单独占一屏，因为太重要。
+
+同一个 ONNX 模型，改一行 executionProviders 配置，就能在 CPU、GPU、NPU 之间自由切换。
+
+想想这件事的意义：在没有 ORT Web 之前，你想从用 CPU 改成用 GPU，可能要换整套代码、换库、甚至换模型格式。现在，硬件选择变成了一个配置项，一个字符串数组。
+
+这就是抽象的力量。ORT Web 把"用什么硬件"这个原本很重的决定，变轻了，变成了一个可以随时调的开关。待会儿动手环节，你们就会亲手切换这个开关，对比不同后端的速度。
+  </aside>
+</section>
+
+<!-- ============ 28 · MODULE: Transformers.js ============ -->
+<section class="slide center">
+  <div class="kicker">模块四 · 55–70 min</div>
+  <h1><span class="accent">Transformers.js</span><br>一行代码用 Hugging Face</h1>
+  <p class="big muted">把整套技术栈，收敛成一个 <code>pipeline()</code></p>
+  <aside class="notes-src" data-time="46:30 – 47:00">
+第四个模块，Transformers.js，我们终于爬到栈的最顶层了。
+
+前面三层 —— WebGPU、WebNN、ORT Web —— 听起来都还有点门槛。Transformers.js 的使命就是把这一切包起来，让你用一行代码就能跑模型。这是离学生最近、最容易上手的一层。
+  </aside>
+</section>
+
+<!-- ============ 29 · 是什么 / 对照 Python ============ -->
+<section class="slide">
+  <div class="kicker">Transformers.js 是什么</div>
+  <h2>Hugging Face 官方的 <span class="accent">JS 版</span></h2>
+  <div class="cols">
+    <div class="col">
+      <div class="card">
+        <h3>背景</h3>
+        <p>Hugging Face 是全球最大的开源模型社区。Python 的 <code>transformers</code> 库是 AI 圈的"标配"。</p>
+      </div>
+      <div class="card" style="border-color:var(--intel-blue)">
+        <h3>Transformers.js</h3>
+        <p>官方出的 <span class="accent">JavaScript 版</span>，API 几乎和 Python 一样，<span class="accent">直接在浏览器跑</span>，底层用 ORT Web。</p>
+      </div>
+    </div>
+    <div class="col">
+      <pre style="font-size:16px"><span class="tok-com"># Python（服务器）</span>
+<span class="tok-key">from</span> transformers <span class="tok-key">import</span> pipeline
+pipe = <span class="tok-fn">pipeline</span>(<span class="tok-str">'sentiment-analysis'</span>)
+pipe(<span class="tok-str">'I love this!'</span>)
+
+<span class="tok-com">// JavaScript（浏览器）</span>
+<span class="tok-key">import</span> { pipeline } <span class="tok-key">from</span> <span class="tok-str">'@huggingface/transformers'</span>;
+<span class="tok-key">const</span> pipe = <span class="tok-key">await</span> <span class="tok-fn">pipeline</span>(<span class="tok-str">'sentiment-analysis'</span>);
+<span class="tok-key">await</span> <span class="tok-fn">pipe</span>(<span class="tok-str">'I love this!'</span>);</pre>
+    </div>
+  </div>
+  <p class="muted">会 Python <code>transformers</code> 的人，<span class="accent">几乎零成本</span>迁到浏览器。</p>
+  <aside class="notes-src" data-time="47:00 – 49:00">
+Transformers.js 是什么？Hugging Face 官方出的 JavaScript 版。
+
+先说背景：Hugging Face 是全球最大的开源 AI 模型社区，你想要的模型基本都能在上面找到。它的 Python 库叫 transformers，是 AI 圈的标配工具，几乎人人在用。
+
+Transformers.js 就是这个库的官方 JS 版本。妙就妙在：它的 API 设计得和 Python 版几乎一模一样，但它直接在浏览器里跑，底层用的就是我们刚讲的 ONNX Runtime Web。
+
+看右边两段代码对比，Python 和 JavaScript，几乎长得一样 —— 都是 import pipeline，都是 pipeline('sentiment-analysis')，然后调用。
+
+这意味着什么？一个会用 Python transformers 的算法工程师，几乎零学习成本就能把模型搬到浏览器里。这个设计非常聪明，直接复用了整个社区的肌肉记忆。
+  </aside>
+</section>
+
+<!-- ============ 30 · pipeline() 抽象 ============ -->
+<section class="slide">
+  <div class="kicker">核心抽象</div>
+  <h2><code>pipeline(task, model, options)</code></h2>
+  <pre><code><span class="tok-key">const</span> generator = <span class="tok-key">await</span> <span class="tok-fn">pipeline</span>(
+  <span class="tok-str">'text-generation'</span>,                       <span class="tok-com">// ① 任务类型</span>
+  <span class="tok-str">'HuggingFaceTB/SmolLM2-360M-Instruct'</span>,    <span class="tok-com">// ② 模型名（自动从 Hub 下载）</span>
+  { device: <span class="tok-str">'webgpu'</span> }                       <span class="tok-com">// ③ 选项：用哪个硬件后端</span>
+);
+
+<span class="tok-key">const</span> out = <span class="tok-key">await</span> <span class="tok-fn">generator</span>(<span class="tok-str">'你好，介绍一下你自己'</span>);</code></pre>
+  <ul style="margin-top:10px">
+    <li><b>① 任务</b>：<code>text-generation</code> / <code>image-classification</code> / <code>translation</code>…</li>
+    <li><b>② 模型</b>：填 Hugging Face 上的名字，库自动下载 + 缓存。</li>
+    <li><b>③ 选项</b>：<code>device: 'webgpu' | 'wasm'</code> —— 又是这一行决定用什么硬件。</li>
+  </ul>
+  <aside class="notes-src" data-time="49:00 – 51:30">
+Transformers.js 的核心就是这一个函数：pipeline，三个参数。
+
+第一个参数，任务类型。你要干嘛？文本生成填 text-generation，图像分类填 image-classification，翻译填 translation。Transformers.js 支持几十种任务。
+
+第二个参数，模型名字。直接填 Hugging Face 网站上那个模型的名字，库会自动帮你从 Hub 下载，并且缓存起来。这里我填的是 SmolLM2，一个很小的语言模型。
+
+第三个参数，选项。注意 device 这一行 —— 又是它！'webgpu' 还是 'wasm'，决定用什么硬件。你看，从 ORT Web 的 executionProviders，到这里的 device，"选硬件"这个动作一路传上来，始终是一行配置。
+
+拿到 generator 之后，直接像调函数一样把输入喂进去，就出结果了。三个参数定义一个 AI 能力，一行调用拿到结果。这就是为什么说 Transformers.js 把整套技术栈收敛成了一个 pipeline。
+  </aside>
+</section>
+
+<!-- ============ 31 · 全栈架构串联 ============ -->
+<section class="slide">
+  <div class="kicker">把四个模块串起来</div>
+  <h2>一次 <code>pipeline()</code> 调用，<span class="accent">穿透整个栈</span></h2>
+  <div class="stack">
+    <div class="layer l1"><span class="t">pipeline('text-generation', model, {device:'webgpu'})</span><span class="d">① 你写的一行</span></div>
+    <div class="arrow-down">▼ Transformers.js 解析任务、下载模型</div>
+    <div class="layer l2"><span class="t">ONNX Runtime Web</span><span class="d">② 加载 .onnx，按 device 选后端</span></div>
+    <div class="arrow-down">▼ executionProviders</div>
+    <div class="layer" style="border-color:var(--intel-blue)"><span class="t">WebGPU / WebNN</span><span class="d">③ 桥接到硬件</span></div>
+    <div class="arrow-down">▼</div>
+    <div class="layer"><span class="t">AI PC：GPU / NPU</span><span class="d">④ 真正算</span></div>
+  </div>
+  <p class="muted center" style="margin-top:14px">你只写第①行，<span class="accent">②③④ 全自动</span>。这就是抽象层层叠加的威力。</p>
+  <aside class="notes-src" data-time="51:30 – 53:30">
+现在把今天讲的四个模块，用一次真实的调用串起来，这是那张大图的第二次出现。
+
+你写的，只有最上面这一行：pipeline，文本生成，某个模型，device 设成 webgpu。就这一行。
+
+接下来全自动：Transformers.js 解析你要做文本生成，去 Hub 把模型下载下来，转成 ONNX 交给 ORT Web。
+
+ORT Web 加载这个 .onnx 模型，看到你 device 写的是 webgpu，就选 WebGPU 这个后端。
+
+WebGPU 把计算桥接到 GPU。如果你写的是 webnn，这里就换成 WebNN，桥接到 NPU。
+
+最后，AI PC 的 GPU 或 NPU 真正执行计算，结果一路返回到你那一行代码。
+
+看到没？你只写了第一行，下面三层全自动。这就是抽象层层叠加的威力 —— 每一层都把下面的复杂度藏起来，最后用户只面对一个 pipeline。但今天你理解了底下每一层在干嘛，这就是这堂课和"只会调 API"的区别。
+  </aside>
+</section>
+
+<!-- ============ 32 · 缓存机制 ============ -->
+<section class="slide">
+  <div class="kicker">模型从哪来 · 到哪去</div>
+  <h2>下载一次，<span class="accent">缓存到底</span></h2>
+  <div class="cols">
+    <div class="col">
+      <div class="card"><h3>首次运行</h3><p>从 Hugging Face Hub 下载模型权重（几十 MB ~ 几百 MB），存进浏览器的 <span class="accent">Cache Storage</span>。</p></div>
+      <div class="card"><h3>再次运行</h3><p>直接读缓存，<span class="accent">秒开</span>，不再下载。</p></div>
+    </div>
+    <div class="col">
+      <div class="card" style="border-color:var(--intel-blue)"><h3>断网之后</h3><p>模型已在本地缓存 → <span class="accent">完全离线可用</span>。这就是开场 Demo 拔网线还能跑的原因。</p></div>
+      <div class="card"><h3>隐私含义</h3><p>模型下载到本地后，<span class="accent">推理时数据不再出网</span>。你的输入永远留在这台机器。</p></div>
+    </div>
+  </div>
+  <aside class="notes-src" data-time="53:30 – 55:30">
+讲一下模型的生命周期，这解释了开场那个"拔网线还能跑"的魔术。
+
+首次运行：Transformers.js 从 Hugging Face Hub 把模型权重下载下来，可能几十 MB 到几百 MB，然后存进浏览器的 Cache Storage —— 这是浏览器专门用来缓存大文件的地方。
+
+再次运行：直接从缓存读，秒开，不再重新下载。所以第一次慢，之后都快。
+
+断网之后：模型已经在本地缓存里了，所以完全离线可用。这就是开场我拔掉 WiFi 还能继续生成的原因 —— 模型早下好了，根本不需要网。
+
+最后强调隐私含义：模型下载到本地之后，你每次推理，输入数据是在本地算的，不再出网。你打的字、你上传的图，永远留在这台机器上。对隐私敏感的应用，这是杀手级特性。回扣开头那张"云端vs本地"的表，这就是"数据不出本地"的技术实现。
+  </aside>
+</section>
+
+<!-- ============ 33 · 任务一览 ============ -->
+<section class="slide">
+  <div class="kicker">能做的不止聊天</div>
+  <h2>Transformers.js 支持的任务（部分）</h2>
+  <div class="cols">
+    <div class="col">
+      <div class="card">
+        <h3>📝 文本</h3>
+        <span class="pill">文本生成</span><span class="pill">情感分析</span><span class="pill">翻译</span><span class="pill">摘要</span><span class="pill">问答</span><span class="pill">分类</span>
+      </div>
+      <div class="card">
+        <h3>🖼 视觉</h3>
+        <span class="pill">图像分类</span><span class="pill">目标检测</span><span class="pill">图像分割</span><span class="pill">背景移除</span><span class="pill">深度估计</span>
+      </div>
+    </div>
+    <div class="col">
+      <div class="card">
+        <h3>🎙 音频</h3>
+        <span class="pill">语音识别</span><span class="pill">语音合成</span><span class="pill">音频分类</span>
+      </div>
+      <div class="card">
+        <h3>🔀 多模态</h3>
+        <span class="pill">图文检索</span><span class="pill">图像描述</span><span class="pill">视觉问答</span><span class="pill">文本嵌入</span>
+      </div>
+    </div>
+  </div>
+  <p class="muted">同一套 <code>pipeline()</code>，换个任务名 + 模型名，就能做这些 —— <span class="accent">全在浏览器、全本地</span>。</p>
+  <aside class="notes-src" data-time="55:30 – 57:00">
+别以为 Web AI 只能做聊天机器人。Transformers.js 支持的任务非常广，看这四类。
+
+文本：生成、情感分析、翻译、摘要、问答、分类，传统 NLP 能干的基本都有。
+
+视觉：图像分类、目标检测、图像分割、背景移除、深度估计。背景移除特别实用，做个网页版抠图工具，完全本地，不用上传照片。
+
+音频：语音识别（把语音转文字）、语音合成、音频分类。本地字幕、本地语音助手都能做。
+
+多模态：图文检索、给图片生成描述、视觉问答、文本嵌入（做语义搜索的基础）。
+
+关键是，做这么多事，你用的还是同一套 pipeline()，只是换个任务名、换个模型名。而且全在浏览器里、全本地。这给你们的课后作业留了巨大空间 —— 后面会让你们自己挑一个做。
+  </aside>
+</section>
+
+<!-- ============ 34 · MODULE: 动手 ============ -->
+<section class="slide center">
+  <div class="kicker">动手实践 · 70–87 min</div>
+  <h1>🖐 现在，<span class="accent">轮到你了</span></h1>
+  <p class="big muted">在你自己的浏览器里，跑通一个本地 AI 应用</p>
+  <aside class="notes-src" data-time="57:00 – 57:30">
+理论讲完了，现在是这堂课最重要的部分：你自己动手。
+
+接下来你要在自己的浏览器里，亲手跑通一个本地 AI 应用。不是看我跑，是你自己跑。两条轨道，二选一，根据你的兴趣和设备情况选。
+  </aside>
+</section>
+
+<!-- ============ 35 · 动手总览 A/B ============ -->
+<section class="slide">
+  <div class="kicker">二选一 · 也可都试</div>
+  <h2>两条轨道，对应两个标准</h2>
+  <div class="cols">
+    <div class="col">
+      <div class="card" style="border-color:var(--intel-blue)">
+        <h3>🅰 轨道 A · WebGPU 跑大模型</h3>
+        <p><b>做</b>：浏览器里和一个本地 LLM 对话。</p>
+        <p><b>技术</b>：Transformers.js + <span class="accent">WebGPU</span>。</p>
+        <p><b>看</b>：首 token 延迟、生成速度，切 WebGPU/WASM 对比。</p>
+        <p><b>体现</b>：AI PC 的 <span class="accent">GPU 算力</span>。</p>
+        <p class="muted">文件：<code>track-a-webgpu-llm/index.html</code></p>
+      </div>
+    </div>
+    <div class="col">
+      <div class="card" style="border-color:var(--intel-blue)">
+        <h3>🅱 轨道 B · WebNN 跑视觉</h3>
+        <p><b>做</b>：上传图片，本地图像分类。</p>
+        <p><b>技术</b>：Transformers.js + <span class="accent">WebNN</span>。</p>
+        <p><b>看</b>：推理耗时，切 WebNN/WASM 对比。</p>
+        <p><b>体现</b>：AI PC 的 <span class="accent">NPU 能效</span>。</p>
+        <p class="muted">文件：<code>track-b-webnn-cv/index.html</code></p>
+      </div>
+    </div>
+  </div>
+  <aside class="notes-src" data-time="57:30 – 59:00">
+两条轨道，对应你今天学的两个标准，我特意这么设计。
+
+轨道 A，用 WebGPU 跑大模型。你会在浏览器里和一个本地的语言模型对话。重点观察首 token 延迟和生成速度，然后切换 WebGPU 和 WASM，亲眼看 GPU 比 CPU 快多少。这体现的是 AI PC 的 GPU 算力。
+
+轨道 B，用 WebNN 跑视觉。你上传一张图，让它做图像分类。观察推理耗时，切换 WebNN 和 WASM 对比。这体现的是 AI PC 的 NPU 能效。
+
+怎么选？如果你对大模型、ChatGPT 这类感兴趣，选 A。如果你对图像识别、计算机视觉感兴趣，或者你的机器是带 NPU 的 Intel AI PC，选 B 能体验到 NPU。时间够的同学两个都试。
+
+两个文件我都准备好了，双击就能打开，不需要装任何环境。
+  </aside>
+</section>
+
+<!-- ============ 36 · 轨道 A 步骤 ============ -->
+<section class="slide">
+  <div class="kicker">轨道 A · 操作步骤</div>
+  <h2>🅰 WebGPU 跑大语言模型</h2>
+  <div class="cols">
+    <div class="col">
+      <ol>
+        <li>双击打开 <code>track-a-webgpu-llm/index.html</code></li>
+        <li>device 选 <code>webgpu</code>，点<b>「加载模型」</b>（首次下载等待）</li>
+        <li>输入问题，点<b>「生成」</b>，看流式输出</li>
+        <li>记下 <span class="accent">首 token 延迟</span> 和 <span class="accent">tok/s</span></li>
+        <li>切 device 为 <code>wasm</code> 重新加载，<span class="accent">对比速度</span></li>
+      </ol>
+    </div>
+    <div class="col">
+      <pre style="font-size:16px"><span class="tok-key">const</span> gen = <span class="tok-key">await</span> <span class="tok-fn">pipeline</span>(
+  <span class="tok-str">'text-generation'</span>,
+  <span class="tok-str">'…/SmolLM2-360M-Instruct'</span>,
+  { device: <span class="tok-str">'webgpu'</span> }   <span class="tok-com">// ← 这里切硬件</span>
+);
+<span class="tok-key">const</span> out = <span class="tok-key">await</span> <span class="tok-fn">gen</span>(messages, {
+  max_new_tokens: <span class="tok-num">128</span>, streamer
+});</code></pre>
+      <p class="muted">核心就这一段。页面已封装好，你专注体验和对比。</p>
+    </div>
+  </div>
+  <aside class="notes-src" data-time="59:00 – 64:00">
+轨道 A 的操作步骤，跟着做。
+
+第一步，双击打开 track-a 那个 html 文件。它直接在浏览器里开，不需要服务器。
+
+第二步，device 默认就是 webgpu，点"加载模型"。第一次会下载模型，几十 MB，等进度条走完。这里可以让学生互相帮忙，网络慢的同学耐心等。
+
+第三步，在输入框打个问题，点"生成"，你会看到文字一个个蹦出来，流式输出。
+
+第四步，记下两个数字：首 token 延迟，就是你点生成到第一个字出现花了多久；还有 tok/s，每秒生成多少 token。
+
+第五步，关键对比：把 device 切成 wasm，重新加载模型，再生成一次。对比 tok/s。你会明显看到 WebGPU 比 WASM 快很多 —— 这就是 GPU 算力的直观体现。
+
+右边是核心代码，其实就是我们讲过的 pipeline，页面已经封装好了，你不用写代码，专注体验和对比这两个后端的差异。
+
+【巡场】这五分钟我会下去转，帮大家解决加载问题。常见问题：网络慢、或者旧浏览器不支持 WebGPU —— 后者就先用 wasm 体验流程。
+  </aside>
+</section>
+
+<!-- ============ 37 · 轨道 A 观察点 ============ -->
+<section class="slide">
+  <div class="kicker">轨道 A · 想一想</div>
+  <h2>🅰 三个观察点</h2>
+  <div class="card"><h3>① WebGPU 比 WASM 快多少？</h3><p>看 tok/s 的差距 —— 这就是把计算从 CPU 挪到 GPU 的收益。</p></div>
+  <div class="card"><h3>② 打开任务管理器看 GPU</h3><p>生成时 GPU 占用飙升，证明计算真的发生在本地 GPU 上，不是云端。</p></div>
+  <div class="card" style="border-color:var(--intel-blue)"><h3>③ 断网再生成</h3><p>关掉 WiFi 再点生成，依然能跑 —— 模型已缓存，<span class="accent">全程本地、零联网、零成本</span>。</p></div>
+  <aside class="notes-src" data-time="64:00 – 65:30">
+做完轨道 A，停下来想三件事，这是把体验上升成认知的关键。
+
+第一，WebGPU 比 WASM 快多少？看你记的 tok/s。这个差距，就是把计算从 CPU 挪到 GPU 的纯收益，你亲手量出来的。
+
+第二，打开任务管理器，切到性能页看 GPU。生成的时候 GPU 占用会飙升。这是证据 —— 证明计算真的发生在你这台笔记本的 GPU 上，不是我骗你偷偷调云端。
+
+第三，再玩一次断网那个魔术：关 WiFi，点生成，照跑。这时候你应该已经理解为什么了 —— 模型缓存在浏览器里，全程本地，不联网，零成本。
+
+这三点把"我跑了个 Demo"变成"我理解了本地推理的价值"。
+  </aside>
+</section>
+
+<!-- ============ 38 · 轨道 B 步骤 ============ -->
+<section class="slide">
+  <div class="kicker">轨道 B · 操作步骤</div>
+  <h2>🅱 WebNN 跑图像分类</h2>
+  <div class="cols">
+    <div class="col">
+      <ol>
+        <li>双击打开 <code>track-b-webnn-cv/index.html</code></li>
+        <li>device 选 <code>webnn</code>，点<b>「加载模型」</b><br><span class="muted">（不支持就用 wasm，流程一样）</span></li>
+        <li>上传一张图片，点<b>「分类」</b></li>
+        <li>看 Top-5 结果 + <span class="accent">推理耗时</span></li>
+        <li>切 <code>wasm</code> 对比耗时与发热</li>
+      </ol>
+    </div>
+    <div class="col">
+      <pre style="font-size:16px"><span class="tok-key">const</span> clf = <span class="tok-key">await</span> <span class="tok-fn">pipeline</span>(
+  <span class="tok-str">'image-classification'</span>,
+  <span class="tok-str">'…/mobilenetv4…'</span>,
+  { device: <span class="tok-str">'webnn'</span> }    <span class="tok-com">// ← 直达 NPU</span>
+);
+<span class="tok-key">const</span> out = <span class="tok-key">await</span> <span class="tok-fn">clf</span>(imageURL, {
+  top_k: <span class="tok-num">5</span>
+});</code></pre>
+      <p class="muted">WebNN 需在 <code>chrome://flags</code> 开启；不支持自动回退 WASM。</p>
+    </div>
+  </div>
+  <aside class="notes-src" data-time="65:30 – 70:30">
+轨道 B 的步骤。
+
+第一步，双击打开 track-b 的 html。
+
+第二步，device 选 webnn，点加载模型。这里要诚实提醒：WebNN 比较新，需要在 chrome://flags 里开启那个 flag。如果你没开或者浏览器不支持，没关系，选 wasm，流程完全一样，只是没用到 NPU 而已。我宁愿你跑通流程，也不要卡在环境上。
+
+第三步，上传一张图片，可以用你自己的照片，或者点"用示例图片"。
+
+第四步，点分类，看 Top-5 结果 —— 模型猜这张图是什么，给出前五个可能和概率。同时看推理耗时。
+
+第五步，如果你成功用上了 webnn，切到 wasm 对比一下耗时，再摸摸机器，体会 NPU 的省电和不发热。
+
+右边核心代码，还是 pipeline，任务换成 image-classification，device 换成 webnn 就直达 NPU。一行的事。
+
+【巡场】这一段我重点帮想用 WebNN 的同学开 flag。开不了的就 wasm 兜底，别纠结。
+  </aside>
+</section>
+
+<!-- ============ 39 · 轨道 B 观察点 ============ -->
+<section class="slide">
+  <div class="kicker">轨道 B · 想一想</div>
+  <h2>🅱 三个观察点</h2>
+  <div class="card"><h3>① 图片传出去了吗？</h3><p>没有。整个分类在本地完成，<span class="accent">你的照片从未上传</span> —— 视觉任务的隐私意义。</p></div>
+  <div class="card"><h3>② WebNN / WASM 的耗时差</h3><p>NPU 在持续视觉推理上的能效优势：又快又省电。</p></div>
+  <div class="card" style="border-color:var(--intel-blue)"><h3>③ 想象一个常驻场景</h3><p>如果这是<span class="accent">实时摄像头</span>识别，每秒跑 30 次 —— 这时 NPU 的省电才真正显出价值。</p></div>
+  <aside class="notes-src" data-time="70:30 – 72:00">
+轨道 B 做完，也想三件事。
+
+第一，你上传的那张图，传出去了吗？没有。整个分类在你浏览器本地完成，照片从没离开你的电脑。对视觉应用，这个隐私意义特别大 —— 想想人脸、想想医疗影像，你绝不希望它们被上传。
+
+第二，如果你对比了 WebNN 和 WASM 的耗时，体会一下 NPU 在视觉推理上的能效。
+
+第三，也是最重要的想象：现在是你上传一张图跑一次。但如果这是实时摄像头识别呢？每秒要跑 30 次，连续跑几小时。这种常驻、高频的场景下，NPU 的省电优势才真正显出价值 —— 用 GPU 电池半小时就干了，用 NPU 能跑一整天。这就是 AI PC 把 NPU 做进去的意义。
+
+好，动手环节到这。大家回到座位，我们收尾。
+  </aside>
+</section>
+
+<!-- ============ 40 · 全景闭环 ============ -->
+<section class="slide">
+  <div class="kicker">总结 · 那张图，第三次</div>
+  <h2>完整闭环：<span class="accent">从一行代码到 AI PC 硬件</span></h2>
+  <div class="stack">
+    <div class="layer l1"><span class="t">Transformers.js · pipeline()</span><span class="d">一行调用，最易上手</span></div>
+    <div class="arrow-down">▼</div>
+    <div class="layer l2"><span class="t">ONNX Runtime Web</span><span class="d">统一引擎，换一行切后端</span></div>
+    <div class="arrow-down">▼</div>
+    <div class="layer" style="border-color:var(--intel-blue)"><span class="t">WebGPU（GPU）&nbsp;|&nbsp; WebNN（NPU）</span><span class="d">摸到硬件的桥梁</span></div>
+    <div class="arrow-down">▼</div>
+    <div class="layer"><span class="t">AI PC：CPU · GPU · NPU</span><span class="d">真正的算力</span></div>
+  </div>
+  <p class="muted center" style="margin-top:14px"><span class="accent">轨道 A 走了 GPU 那条线，轨道 B 走了 NPU 那条线。</span>你已经亲手跑通了整张图。</p>
+  <aside class="notes-src" data-time="72:00 – 74:00">
+那张图，第三次，也是最后一次。但这次不一样 —— 现在你不只是看，你已经亲手跑通了它。
+
+从上到下：你写一行 Transformers.js 的 pipeline。它交给 ONNX Runtime Web，这个引擎根据你的 device 设置，选 WebGPU 或 WebNN。WebGPU 桥接到 GPU，WebNN 桥接到 NPU。最后 AI PC 的硬件真正算出结果。
+
+回想刚才：轨道 A，你走的是 GPU 这条线，跑大模型；轨道 B，你走的是 NPU 这条线，跑视觉。两条轨道，刚好把这张图的两条路径都跑了一遍。
+
+所以这张图现在对你不是抽象的框框了，是你亲手验证过的东西。这就是这堂课想给你的：不是"会调一个库"，而是"理解一行代码背后，数据怎么一路落到硬件上"。
+  </aside>
+</section>
+
+<!-- ============ 41 · 能做 / 不能做 ============ -->
+<section class="slide">
+  <div class="kicker">判断力 · 工程师最值钱的部分</div>
+  <h2>本地 Web AI：<span class="accent">能做</span>什么，<span class="accent">别勉强</span>什么</h2>
+  <div class="cols">
+    <div class="col">
+      <div class="card" style="border-color:var(--ok)">
+        <h3>✅ 适合本地</h3>
+        <ul style="font-size:18px">
+          <li>中小模型（几亿参数级）</li>
+          <li>隐私敏感数据（照片、笔记、录音）</li>
+          <li>离线 / 弱网场景</li>
+          <li>高频常驻推理（摄像头、字幕）</li>
+          <li>想省云端成本的高频调用</li>
+        </ul>
+      </div>
+    </div>
+    <div class="col">
+      <div class="card" style="border-color:var(--warn)">
+        <h3>⚠ 仍需云端</h3>
+        <ul style="font-size:18px">
+          <li>超大模型（几百 B，本地装不下）</li>
+          <li>需要最新知识 / 实时数据</li>
+          <li>需要跨设备同步的重计算</li>
+          <li>对首次加载体积极敏感的场景</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+  <p class="muted center" style="margin-top:8px"><span class="accent">该本地的本地，该云端的云端</span> —— 还记得开头这句吗？</p>
+  <aside class="notes-src" data-time="74:00 – 77:00">
+最后讲判断力，这是工程师最值钱的部分，比会用任何工具都重要。
+
+什么适合放本地？中小模型，几亿参数级别的，本地能装下、能跑动。隐私敏感的数据 —— 照片、笔记、录音，本地处理最安心。离线或弱网场景。高频常驻的推理，比如摄像头、实时字幕。还有，想省云端成本的高频调用 —— 量大的时候本地的零成本很香。
+
+什么还得用云端？超大模型，几百 B 参数那种，本地内存根本装不下。需要最新知识或实时数据的，本地模型是"冻结"在训练那一刻的。需要跨设备同步的重计算。还有对首次加载体积特别敏感的场景 —— 毕竟本地要先下载几十上百 MB 的模型。
+
+记得开头那句话吗？该本地的本地，该云端的云端。绕了一圈，现在你应该真正理解这句话的分量了。技术选型不是追新，是匹配场景。
+  </aside>
+</section>
+
+<!-- ============ 42 · 资源 + 作业 + Q&A ============ -->
+<section class="slide">
+  <div class="kicker">收尾 · 87–90 min</div>
+  <h2>带着走 · 资源 + 作业</h2>
+  <div class="cols">
+    <div class="col">
+      <div class="card">
+        <h3>📚 学习资源</h3>
+        <ul style="font-size:18px">
+          <li>Transformers.js 官方文档 + 示例</li>
+          <li>ONNX Runtime Web 文档</li>
+          <li>W3C WebNN 规范 + 示例</li>
+          <li>WebGPU 报告 / Can I Use</li>
+          <li>Intel AI PC / OpenVINO™ 开发者资料</li>
+        </ul>
+      </div>
+    </div>
+    <div class="col">
+      <div class="card" style="border-color:var(--intel-blue)">
+        <h3>🎯 课后作业</h3>
+        <p>基于轨道 A 或 B，<span class="accent">改造出一个你自己的 Web AI 小应用</span>。</p>
+        <p class="muted">参考方向：本地翻译器、网页版抠图、情感分析评论区、本地语音转文字、图片自动打标签…</p>
+        <p>要求：<span class="accent">纯前端、可离线、数据不出本地</span>。</p>
+      </div>
+    </div>
+  </div>
+  <h3 class="center" style="margin-top:18px">谢谢！现在是 <span class="accent">Q&A</span> 时间 🙋</h3>
+  <aside class="notes-src" data-time="77:00 – 90:00">
+收尾，给你们带得走的东西。
+
+资源：Transformers.js 的官方文档做得非常好，有大量能直接跑的示例，强烈建议课后去翻。ONNX Runtime Web、WebNN 规范、WebGPU 兼容性查询、Intel 的 AI PC 和 OpenVINO 开发者资料，都列在这了。
+
+作业：基于今天的轨道 A 或 B，改造出一个你自己的 Web AI 小应用。给你几个方向：本地翻译器、网页版抠图工具、评论区情感分析、本地语音转文字、图片自动打标签。要求三条：纯前端、可离线、数据不出本地 —— 把今天的核心价值用上。
+
+挑一个你真正想用的做，做出来你会很有成就感，因为它真的在你电脑上跑，不花一分钱，还保护隐私。
+
+好，这就是今天全部内容。从"浏览器只能上网"到"浏览器是个 AI 运行时"，希望你带走的不只是两个 Demo，而是那张图和那句判断 —— 该本地的本地，该云端的云端。
+
+现在 Q&A，有什么问题尽管问。
+
+【常见问题预案】
+- 模型多大才能在浏览器跑？答：目前舒服的是 1B 参数以内，量化后；2-3B 也有人跑但加载久。
+- 手机能跑吗？答：能，但受内存限制，选更小的模型。
+- WebNN 什么时候稳定？答：还在演进，关注 W3C 进展和浏览器更新，Intel AI PC 上体验最好。
+- 和 WebLLM、MediaPipe 什么关系？答：都是 Web AI 方案，今天讲的是 HF + ORT 这条最通用的链路。
+  </aside>
+</section>
+
+</div><!-- /stage -->
+
+<!-- speaker notes panel -->
+<div class="notes" id="notes">
+  <button class="notes-close" id="notesClose" title="关闭讲稿 (N / Esc)">✕ 关闭</button>
+  <h4>讲稿 · <span class="ntime" id="noteTime"></span></h4>
+  <div class="nbody" id="noteBody"></div>
+</div>
+
+<div class="hud">
+  <div class="brand">INTEL AI PC · WEB AI</div>
+  <div><span id="counter">1 / 42</span></div>
+</div>
+
+<script>
+  const slides = Array.from(document.querySelectorAll('.slide'));
+  const total = slides.length;
+  let i = 0;
+  let notesOn = false;
+
+  const counter = document.getElementById('counter');
+  const progress = document.getElementById('progress');
+  const notesEl = document.getElementById('notes');
+  const noteBody = document.getElementById('noteBody');
+  const noteTime = document.getElementById('noteTime');
+
+  function render() {
+    slides.forEach((s, n) => s.classList.toggle('active', n === i));
+    counter.textContent = (i + 1) + ' / ' + total;
+    progress.style.width = ((i + 1) / total * 100) + '%';
+    // notes
+    const src = slides[i].querySelector('.notes-src');
+    noteBody.textContent = src ? src.textContent.trim() : '（本页无讲稿）';
+    noteTime.textContent = src ? (src.getAttribute('data-time') || '') : '';
+  }
+
+  function go(d) {
+    i = Math.max(0, Math.min(total - 1, i + d));
+    render();
+  }
+
+  function toggleNotes(force) {
+    notesOn = (force === undefined) ? !notesOn : force;
+    notesEl.classList.toggle('show', notesOn);
+  }
+
+  // Use e.code (physical key) so a Chinese/Japanese IME can't swallow N/F.
+  document.addEventListener('keydown', (e) => {
+    if (e.code === 'ArrowRight' || e.code === 'Space' || e.code === 'PageDown') { go(1); e.preventDefault(); }
+    else if (e.code === 'ArrowLeft' || e.code === 'PageUp') { go(-1); e.preventDefault(); }
+    else if (e.code === 'Home') { i = 0; render(); }
+    else if (e.code === 'End') { i = total - 1; render(); }
+    else if (e.code === 'KeyN') { toggleNotes(); e.preventDefault(); }
+    else if (e.code === 'Escape') { if (notesOn) { toggleNotes(false); e.preventDefault(); } }
+    else if (e.code === 'KeyF') {
+      if (!document.fullscreenElement) document.documentElement.requestFullscreen();
+      else document.exitFullscreen();
+    }
+  });
+
+  // Close button on the notes panel
+  document.getElementById('notesClose').addEventListener('click', (e) => {
+    e.stopPropagation();
+    toggleNotes(false);
+  });
+  // Clicks inside the notes panel shouldn't trigger slide navigation
+  notesEl.addEventListener('click', (e) => e.stopPropagation());
+
+  // click navigation (left third = back, rest = forward)
+  document.getElementById('stage').addEventListener('click', (e) => {
+    if (e.target.closest('a')) return;
+    const x = e.clientX / window.innerWidth;
+    go(x < 0.25 ? -1 : 1);
+  });
+
+  // basic swipe for touch
+  let tx = 0;
+  document.addEventListener('touchstart', e => tx = e.touches[0].clientX, {passive:true});
+  document.addEventListener('touchend', e => {
+    const dx = e.changedTouches[0].clientX - tx;
+    if (Math.abs(dx) > 50) go(dx < 0 ? 1 : -1);
+  }, {passive:true});
+
+  render();
+</script>
+</body>
+</html>
