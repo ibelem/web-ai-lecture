@@ -9,9 +9,11 @@
 | 文件 | 用途 |
 |------|------|
 | [`slides.html`](slides.html) | 42 页 Intel 技术风演示文稿，**双击打开即可全屏演示**（内置讲稿面板） |
-| [`SPEAKER_SCRIPT.md`](SPEAKER_SCRIPT.md) | 可打印演讲稿，含每页时间区间与完整口播词 |
+| [`SPEAKER_SCRIPT.md`](SPEAKER_SCRIPT.md) | 可打印演讲稿（Markdown），含每页时间区间与完整口播词 |
+| [`SPEAKER_SCRIPT.pdf`](SPEAKER_SCRIPT.pdf) | 演讲稿 PDF（A4，排版好，直接打印排练） |
 | [`COURSE.md`](COURSE.md) | 课程设计文档：定位、学习目标、时间轴、运行说明 |
-| [`gen-script.js`](gen-script.js) | 讲稿生成器（改幻灯片讲稿后跑 `node gen-script.js` 同步演讲稿） |
+| [`gen-script.js`](gen-script.js) | 演讲稿生成器（改幻灯片讲稿后跑 `node gen-script.js` 同步 Markdown） |
+| [`gen-pdf.js`](gen-pdf.js) | PDF 生成器（见下方「重新生成 PDF」） |
 | [`track-a-webgpu-llm/`](track-a-webgpu-llm/) | 动手 Demo A：WebGPU + Transformers.js 跑本地大语言模型 |
 | [`track-b-webnn-cv/`](track-b-webnn-cv/) | 动手 Demo B：WebNN + Transformers.js 跑图像分类（NPU 加速） |
 
@@ -36,6 +38,19 @@
 1. 双击 `track-b-webnn-cv/index.html`
 2. 点「加载模型」→ 上传图片 → 「分类」
 3. 观察 Top-5 结果与推理耗时；切 `webnn` / `wasm` 对比
+
+## 重新生成演讲稿 / PDF
+
+讲稿以 `slides.html` 里每页的讲稿块为唯一信息源，改完幻灯片后：
+
+```bash
+node gen-script.js    # 同步 SPEAKER_SCRIPT.md
+node gen-pdf.js       # 生成 SPEAKER_SCRIPT.print.html（中间产物）
+# 用 Chrome headless 渲染 PDF：
+chrome --headless --disable-gpu --no-pdf-header-footer \
+  --print-to-pdf=SPEAKER_SCRIPT.pdf \
+  file:///<绝对路径>/SPEAKER_SCRIPT.print.html
+```
 
 ## 核心主线
 

@@ -7,3 +7,6 @@ Thumbs.db
 
 # node (none checked in, but just in case)
 node_modules/
+
+# 中间产物：由 gen-pdf.js 生成，用于渲染 PDF，不入库
+SPEAKER_SCRIPT.print.html
