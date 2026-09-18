@@ -68,7 +68,7 @@ const doc = `<!DOCTYPE html>
   <div class="cover">
     <div class="badge">INTEL AI PC · WEB AI 全栈实战 · 演讲稿</div>
     <h1>你的 AI PC 不只会跑软件</h1>
-    <div class="sub">在浏览器里用 WebGPU + WebNN 跑本地 AI 大模型与视觉应用<br>90 分钟 · 42 页 · 完整口播稿</div>
+    <div class="sub">在浏览器里用 WebGPU + WebNN 跑本地 AI 大模型与视觉应用<br>90 分钟 · 45 页 · 完整口播稿</div>
     <div class="keys">演示操作键： <code>←</code>/<code>→</code> 翻页 · <code>N</code> 讲稿开关 · <code>Esc</code> 关讲稿 · <code>F</code> 全屏</div>
   </div>
   ${cards.join("\n")}

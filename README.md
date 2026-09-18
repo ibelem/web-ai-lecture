@@ -2,13 +2,13 @@
 
 > 在浏览器里用 WebGPU + WebNN 跑本地 AI 大模型与视觉应用
 
-一堂面向大学生的 90 分钟 Web AI 讲座，覆盖 **WebGPU、WebNN API、ONNX Runtime Web、Transformers.js**。对标参考课《你的电脑不只会跑软件》，强调 Intel AI PC（CPU / GPU / NPU 三引擎）的软硬件协同与本地推理。
+一堂面向大学生的 90 分钟 Web AI 讲座，覆盖 **WebGPU、WebNN API、ONNX Runtime Web、LiteRT.js、Transformers.js**。对标参考课《你的电脑不只会跑软件》，强调 Intel AI PC（CPU / GPU / NPU 三引擎）的软硬件协同与本地推理。
 
 ## 内容
 
 | 文件 | 用途 |
 |------|------|
-| [`slides.html`](slides.html) | 42 页 Intel 技术风演示文稿，**双击打开即可全屏演示**（内置讲稿面板） |
+| [`slides.html`](slides.html) | 45 页 Intel 技术风演示文稿，**双击打开即可全屏演示**（内置讲稿面板） |
 | [`SPEAKER_SCRIPT.md`](SPEAKER_SCRIPT.md) | 可打印演讲稿（Markdown），含每页时间区间与完整口播词 |
 | [`SPEAKER_SCRIPT.pdf`](SPEAKER_SCRIPT.pdf) | 演讲稿 PDF（A4，排版好，直接打印排练） |
 | [`COURSE.md`](COURSE.md) | 课程设计文档：定位、学习目标、时间轴、运行说明 |
@@ -54,7 +54,7 @@ chrome --headless --disable-gpu --no-pdf-header-footer \
 
 ## 核心主线
 
-> AI PC 有 **CPU / GPU / NPU** 三个引擎。浏览器通过 **WebGPU** 摸到 GPU 跑大模型，通过 **WebNN** 摸到 NPU 跑视觉。全部**本地推理**：数据不出机、零云端成本、可离线。下层 **ONNX Runtime Web** 把它们统一成可切换 backend，上层 **Transformers.js** 再简化成一行 `pipeline()`。
+> AI PC 有 **CPU / GPU / NPU** 三个引擎。浏览器通过 **WebGPU** 摸到 GPU 跑大模型，通过 **WebNN** 摸到 NPU 跑视觉。全部**本地推理**：数据不出机、零云端成本、可离线。中层的推理引擎（**ONNX Runtime Web** / **LiteRT.js**）把它们统一成可切换 backend，上层 **Transformers.js** 再简化成一行 `pipeline()`。
 
 ## License
 

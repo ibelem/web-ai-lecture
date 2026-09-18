@@ -12,7 +12,7 @@
 
 **核心主线（贯穿全课的那张图）**：
 
-> AI PC 有 **CPU / GPU / NPU** 三个引擎。浏览器通过 **WebGPU** 摸到 GPU 跑大模型，通过 **WebNN** 摸到 NPU 跑视觉。全部**本地推理**：数据不出机、零云端成本、可离线。下层 **ONNX Runtime Web** 把它们统一成可切换 backend，上层 **Transformers.js** 再简化成一行 `pipeline()`。
+> AI PC 有 **CPU / GPU / NPU** 三个引擎。浏览器通过 **WebGPU** 摸到 GPU 跑大模型，通过 **WebNN** 摸到 NPU 跑视觉。全部**本地推理**：数据不出机、零云端成本、可离线。中层的推理引擎（**ONNX Runtime Web** / **LiteRT.js**）把它们统一成可切换 backend，上层 **Transformers.js** 再简化成一行 `pipeline()`。
 
 ---
 
@@ -20,7 +20,7 @@
 
 1. 说清 **AI PC 三引擎**与 WebGPU / WebNN 的对应关系。
 2. 讲明 WebGPU（通用算力）与 WebNN（神经网络专用加速，直达 NPU）各自解决什么、如何分工。
-3. 理解 ONNX Runtime Web 的 **WASM / WebGPU / WebNN** 三种 backend 取舍。
+3. 理解中层推理引擎的 **WASM / WebGPU / WebNN** 三种 backend 取舍，并说清 **ONNX Runtime Web** 与 **LiteRT.js** 的分工与选型。
 4. 用 Transformers.js 在浏览器里**跑通一个真实模型**。
 5. 判断什么任务适合**浏览器本地推理**、什么仍需云端。
 
@@ -33,7 +33,7 @@
 | 0–10 | 开场：为什么是 Web AI | AI PC 三引擎 + "打开网页就跑大模型"现场 Demo |
 | 10–25 | WebGPU：浏览器的通用算力 | 摸到 GPU，做 LLM 的算力底座 |
 | 25–40 | WebNN：直达 CPU/GPU/NPU | 唯一能直达 NPU 的 Web 标准，能效关键 |
-| 40–55 | ONNX Runtime Web：统一推理引擎 | 三 backend 怎么选 |
+| 40–55 | 推理引擎层：ORT Web + LiteRT.js | 三 backend 怎么选、两个引擎怎么挑 |
 | 55–70 | Transformers.js：一行调用 HF | `pipeline()` 抽象 + 模型缓存 |
 | 70–87 | 动手实践（A / B 二选一） | A：WebGPU 跑 LLM / B：WebNN 跑 CV |
 | 87–90 | 总结 + Q&A | 全景闭环图 + 作业 |
@@ -80,7 +80,9 @@
 
 ---
 
-### 模块 3 ｜ ONNX Runtime Web：统一推理引擎（40–55 min）
+### 模块 3 ｜ 推理引擎层：ONNX Runtime Web + LiteRT.js（40–55 min）
+
+#### 3A · ONNX Runtime Web（主线）
 
 - **ONNX 是什么**：跨框架的模型交换格式（PyTorch / TF 都能导出）。
 - **ORT Web 的三种 execution provider**：
@@ -94,7 +96,24 @@
 - **一段最小推理代码**（创建 session → 选 backend → 喂输入 → 拿输出）。
 - **关键认知**：**同一个 ONNX 模型，换一行 backend 配置就能换硬件**。
 
-> 落点：**ORT Web 把 WebGPU / WebNN 统一成可切换的 backend。**
+#### 3B · LiteRT.js（同一层的另一个引擎）
+
+- **是什么**：Google 把移动端 LiteRT（原 TensorFlow Lite）运行时编译进浏览器，取代早年 TensorFlow.js 的 JS 算子。和 ORT Web **同一层、同一角色**，模型格式是 `.tflite`。
+- **三种 accelerator**：`wasm`（XNNPACK，多线程 + SIMD）/ `webgpu`（Google ML Drift）/ `webnn`（NPU，实验阶段）；不支持的算子自动回退 CPU。
+- **选型对照**：
+
+| 维度 | ONNX Runtime Web | LiteRT.js |
+|------|------------------|-----------|
+| 模型格式 | `.onnx` | `.tflite` |
+| 上层生态 | Transformers.js（HF 模型一行调用） | TF.js 互操作 · LiteRT-LM.js |
+| 从 PyTorch 来 | PyTorch → ONNX | PyTorch → LiteRT（`litert-torch` 一步） |
+| 强项 | 生态最广、LLM 路径成熟 | 视觉/音频延迟，复用移动端量化 |
+| 注意 | 内存自动管理 | Tensor 需手动 `delete()` |
+
+- **官方基准**：视觉/音频模型对比其他 Web 运行时最高约 **3×**；WebGPU/WebNN 相比纯 CPU **5–60×**（M4 MacBook Pro，随设备/驱动波动，需自测）。
+- **教学落点**：引入库 → 选后端建会话 → 喂张量 → `run`，**这一层的形状是固定的**；换引擎不换心智模型。
+
+> 落点：**ORT Web / LiteRT.js 把 WebGPU / WebNN 统一成可切换的 backend；选引擎主要看模型格式和上层生态。**
 
 ---
 
@@ -141,12 +160,12 @@
 
 - **全景闭环图**回顾：`AI PC 三引擎 ↔ WebGPU/WebNN ↔ ORT Web ↔ Transformers.js`。
 - **能做 / 不能做**：本地小模型、隐私敏感、离线场景 ✅；超大模型、需要最新知识 → 仍需云端。
-- **学习资源**：Transformers.js 文档、ONNX Runtime Web 文档、WebNN 规范、Intel AI PC / OpenVINO™ 资料。
+- **学习资源**：Transformers.js 文档、ONNX Runtime Web 文档、[LiteRT.js 文档](https://developers.google.com/edge/litert/web) + [官方博客](https://developers.googleblog.com/litertjs-googles-high-performance-web-ai-inference/)、WebNN 规范、Intel AI PC / OpenVINO™ 资料。
 - **作业**：基于轨道 A 或 B 改造出一个自己的小应用。
 
 ---
 
-## 五、幻灯片（`slides.html` · 共 42 页，含讲稿）
+## 五、幻灯片（`slides.html` · 共 45 页，含讲稿）
 
 **打开方式**：双击 `slides.html`，浏览器直接全屏演示。
 
@@ -157,7 +176,7 @@
 - `Home` / `End`：跳到首页 / 末页
 - 鼠标点击左 1/4 区回退、其余前进；触屏可左右滑动
 
-**页序（42 页，对应 90 分钟时间轴）**：
+**页序（45 页，对应 90 分钟时间轴）**：
 
 | 页 | 内容 | 时间 |
 |----|------|------|
@@ -182,29 +201,32 @@
 | 19 | NPU 能效 | 29:30 |
 | 20 | WebNN + OpenVINO™ | 31:30 |
 | 21 | WebNN 现状 | 33:30 |
-| 22 | 模块三封面：ORT Web | 35:30 |
+| 22 | 模块三封面：推理引擎层 | 35:30 |
 | 23 | ONNX 格式（PDF 类比） | 36:00 |
 | 24 | ORT Web 在栈中的位置 | 38:00 |
 | 25 | 三 backend 对比 | 40:00 |
 | 26 | 最小推理代码 | 42:30 |
 | 27 | 换一行换硬件 | 45:00 |
-| 28 | 模块四封面：Transformers.js | 46:30 |
-| 29 | 是什么 / 对照 Python | 47:00 |
-| 30 | `pipeline()` 抽象 | 49:00 |
-| 31 | 全栈架构串联（第 2 次） | 51:30 |
-| 32 | 缓存机制 | 53:30 |
-| 33 | 任务一览 | 55:30 |
-| 34 | 动手封面 | 57:00 |
-| 35 | 动手总览 A/B | 57:30 |
-| 36 | 轨道 A 步骤 + 代码 | 59:00 |
-| 37 | 轨道 A 观察点 | 64:00 |
-| 38 | 轨道 B 步骤 + 代码 | 65:30 |
-| 39 | 轨道 B 观察点 | 70:30 |
-| 40 | 全景闭环（第 3 次） | 72:00 |
-| 41 | 能做 / 不能做（判断力） | 74:00 |
-| 42 | 资源 + 作业 + Q&A | 77:00 |
+| 28 | LiteRT.js 是什么 | 46:30 |
+| 29 | ORT Web vs LiteRT.js | 47:30 |
+| 30 | LiteRT.js 最小代码（结构对照） | 49:00 |
+| 31 | 模块四封面：Transformers.js | 50:30 |
+| 32 | 是什么 / 对照 Python | 51:00 |
+| 33 | `pipeline()` 抽象 | 53:00 |
+| 34 | 全栈架构串联（第 2 次） | 55:30 |
+| 35 | 缓存机制 | 57:30 |
+| 36 | 任务一览 | 59:30 |
+| 37 | 动手封面 | 61:00 |
+| 38 | 动手总览 A/B | 61:30 |
+| 39 | 轨道 A 步骤 + 代码 | 63:00 |
+| 40 | 轨道 A 观察点 | 68:00 |
+| 41 | 轨道 B 步骤 + 代码 | 69:30 |
+| 42 | 轨道 B 观察点 | 74:30 |
+| 43 | 全景闭环（第 3 次） | 76:00 |
+| 44 | 能做 / 不能做（判断力） | 78:00 |
+| 45 | 资源 + 作业 + Q&A | 81:00 |
 
-> **讲稿设计说明**：全景图刻意出现三次（p6 给地图、p31 串联、p40 闭环），形成"先看地图 → 逐层标记 → 回到地图"的认知闭环；"该本地的本地，该云端的云端"在 p4 抛出、p41 回收，首尾呼应。每页讲稿含开场过渡、类比、现场操作提示与巡场动线，可直接照读。
+> **讲稿设计说明**：全景图刻意出现三次（p6 给地图、p34 串联、p43 闭环），形成"先看地图 → 逐层标记 → 回到地图"的认知闭环；"该本地的本地，该云端的云端"在 p4 抛出、p44 回收，首尾呼应。每页讲稿含开场过渡、类比、现场操作提示与巡场动线，可直接照读。
 
 ---
 
